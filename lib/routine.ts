@@ -42,9 +42,9 @@ export const currentRoutine: Routine = {
           title: "Accessories",
           tag: "acc",
           exercises: [
-            { id: "d1-acc-1", name: "Weighted pull-ups (maintenance)", tag: "acc", prescription: "2 × 5 at ~35kg", rest: "3 min", note: "Maintenance only — ~70% 1RM fatigued.", type: "reps" },
+            { id: "d1-acc-1", name: "Weighted pull-ups (maintenance)", tag: "acc", prescription: "2 × 5 at ~70% 1RM", rest: "3 min", note: "Maintenance only — adjust weight to your level.", type: "reps" },
             { id: "d1-acc-2", name: "Rows", tag: "acc", prescription: "3 × 8-10", rest: "90s", type: "reps" },
-            { id: "d1-acc-3", name: "Dragon flags", tag: "core", prescription: "3 × 5-6", rest: "90s", note: "Key FL accessory at 183cm.", type: "reps" },
+            { id: "d1-acc-3", name: "Dragon flags", tag: "core", prescription: "3 × 5-6", rest: "90s", note: "Key FL accessory — trains anti-extension under long lever.", type: "reps" },
             { id: "d1-acc-4", name: "Hanging leg raises", tag: "core", prescription: "3 × 8-10", rest: "90s", type: "reps" },
           ],
         },
@@ -129,7 +129,7 @@ export const currentRoutine: Routine = {
           title: "Accessories",
           tag: "acc",
           exercises: [
-            { id: "d4-acc-1", name: "Weighted pull-ups (maintenance)", tag: "acc", prescription: "3 × 3 at ~40kg", rest: "3 min", note: "~73% 1RM post-fatigue.", type: "reps" },
+            { id: "d4-acc-1", name: "Weighted pull-ups (maintenance)", tag: "acc", prescription: "3 × 3 at ~75% 1RM", rest: "3 min", note: "Maintenance — adjust weight to your level.", type: "reps" },
             { id: "d4-acc-2", name: "Archer pull-ups", tag: "acc", prescription: "3 × 4-6 each", rest: "2 min", type: "reps" },
             { id: "d4-acc-3", name: "Dragon flags / ab wheel", tag: "core", prescription: "4 × 6-8", rest: "90s", note: "Extra core — FL bottleneck.", type: "reps" },
           ],
