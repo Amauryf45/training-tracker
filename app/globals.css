@@ -1,19 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #e0e0e8;
-  --surface: #12121a;
-  --surface2: #1a1a26;
-  --border: #2a2a3a;
-  --text-dim: #8888a0;
-  --accent: #6c5ce7;
-  --accent2: #a29bfe;
-  --green: #00b894;
-  --orange: #fdcb6e;
-  --red: #e17055;
-  --blue: #74b9ff;
-  --cyan: #81ecec;
+  --background: #faf8f5;
+  --foreground: #2c2520;
+  --surface: #ffffff;
+  --surface2: #f8f5f0;
+  --border: #ece7df;
+  --border-strong: #e0d8cc;
+  --text-dim: #b5a99a;
+  --accent: #c67b4e;
+  --accent2: #a85d30;
+  --green: #4a8c3f;
+  --green-bg: #e8f5e0;
+  --orange: #8c6b3a;
+  --orange-bg: #f5ece0;
+  --red: #c0503a;
+  --blue: #3a6b8c;
+  --blue-bg: #e0ecf5;
 }
 
 @theme inline {
@@ -22,14 +25,17 @@
   --color-surface: var(--surface);
   --color-surface2: var(--surface2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-text-dim: var(--text-dim);
   --color-accent: var(--accent);
   --color-accent2: var(--accent2);
   --color-green: var(--green);
+  --color-green-bg: var(--green-bg);
   --color-orange: var(--orange);
+  --color-orange-bg: var(--orange-bg);
   --color-red: var(--red);
   --color-blue: var(--blue);
-  --color-cyan: var(--cyan);
+  --color-blue-bg: var(--blue-bg);
 }
 
 body {
