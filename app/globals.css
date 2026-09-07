@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0f;
+  --foreground: #e0e0e8;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: #2a2a3a;
+  --text-dim: #8888a0;
+  --accent: #6c5ce7;
+  --accent2: #a29bfe;
+  --green: #00b894;
+  --orange: #fdcb6e;
+  --red: #e17055;
+  --blue: #74b9ff;
+  --cyan: #81ecec;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-border: var(--border);
+  --color-text-dim: var(--text-dim);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent2);
+  --color-green: var(--green);
+  --color-orange: var(--orange);
+  --color-red: var(--red);
+  --color-blue: var(--blue);
+  --color-cyan: var(--cyan);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea {
+  font-size: 16px !important;
+}
