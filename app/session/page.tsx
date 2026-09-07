@@ -47,7 +47,7 @@ function ExerciseInfoModal({ info, name, onClose }: { info: ExerciseInfo; name: 
         <p className="text-sm text-[var(--foreground)] mb-4 leading-relaxed">{info.description}</p>
 
         <div className="mb-4">
-          <h4 className="text-xs font-bold text-[var(--green)] uppercase tracking-wider mb-2">Cues</h4>
+          <h4 className="text-xs font-bold text-[var(--green)] uppercase tracking-wider mb-2">Points cl\u00e9s</h4>
           <ul className="space-y-1.5">
             {info.cues.map((cue, i) => (
               <li key={i} className="text-sm text-[var(--foreground)] flex gap-2">
@@ -59,7 +59,7 @@ function ExerciseInfoModal({ info, name, onClose }: { info: ExerciseInfo; name: 
         </div>
 
         <div>
-          <h4 className="text-xs font-bold text-[var(--red)] uppercase tracking-wider mb-2">Common Mistakes</h4>
+          <h4 className="text-xs font-bold text-[var(--red)] uppercase tracking-wider mb-2">Erreurs courantes</h4>
           <ul className="space-y-1.5">
             {info.mistakes.map((m, i) => (
               <li key={i} className="text-sm text-[var(--foreground)] flex gap-2">
@@ -110,11 +110,11 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Rest complete!" : "Rest"}</div>
+          <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Repos termin\u00e9 !" : "Repos"}</div>
           <div className="text-xs text-[var(--text-dim)] truncate">{exerciseName} &middot; {formatTime(duration)}</div>
         </div>
         <button onClick={onDismiss} className={`px-4 py-2 rounded-xl text-xs font-bold ${done ? "bg-[var(--green)] text-white" : "bg-[var(--surface2)] text-[var(--text-dim)]"}`}>
-          {done ? "Done" : "Skip"}
+          {done ? "OK" : "Passer"}
         </button>
       </div>
     </div>
@@ -138,7 +138,7 @@ function HoldTimer({ onStop }: { onStop: (seconds: number) => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => onStop(elapsed)}>
       <div className="bg-white rounded-3xl p-8 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-wider mb-2">Holding...</div>
+        <div className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-wider mb-2">Maintien...</div>
         <div className="text-5xl font-extrabold text-[var(--foreground)] tabular-nums mb-4">{elapsed}s</div>
         <button
           onClick={() => onStop(elapsed)}
@@ -289,7 +289,7 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
           <div className="flex items-center gap-2 ml-2 shrink-0">
             {completedSets > 0 && (
               <span className="text-xs font-bold text-[var(--green)] bg-[var(--green-bg)] px-2 py-0.5 rounded-md">
-                {completedSets} {isHold ? "holds" : "sets"}
+                {completedSets} {isHold ? "maintiens" : "s\u00e9ries"}
               </span>
             )}
             {info && (
@@ -323,12 +323,12 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
           <div className="flex gap-2 mt-3">
             <button onClick={addSet}
               className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-[var(--surface2)] text-[var(--accent)] border border-[var(--border)] active:bg-[var(--border)]">
-              + Log Set
+              + S\u00e9rie
             </button>
             {log.sets.length > 0 && (
               <button onClick={removeLastSet}
                 className="text-xs font-semibold py-2.5 px-4 rounded-xl text-[var(--red)] bg-red-50 active:bg-red-100">
-                Remove
+                Retirer
               </button>
             )}
           </div>
@@ -394,7 +394,7 @@ function SessionContent() {
     try {
       const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
       if (res.ok) { setSaved(true); setTimeout(() => router.push("/"), 1500); }
-    } catch { alert("Failed to save. Check connection."); }
+    } catch { alert("\u00c9chec de la sauvegarde. V\u00e9rifie ta connexion."); }
     finally { setSaving(false); }
   };
 
@@ -412,7 +412,7 @@ function SessionContent() {
       <main className="flex-1 flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-[var(--green-bg)] text-[var(--green)] flex items-center justify-center text-3xl mx-auto mb-4">&#10003;</div>
-          <p className="text-[var(--green)] font-bold text-lg">Session saved!</p>
+          <p className="text-[var(--green)] font-bold text-lg">S\u00e9ance sauvegard\u00e9e !</p>
         </div>
       </main>
     );
@@ -423,8 +423,8 @@ function SessionContent() {
   return (
     <main className={`flex-1 max-w-lg mx-auto w-full px-4 py-6 ${timerActive ? "pb-36" : "pb-8"}`}>
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => router.push("/")} className="text-[var(--accent)] text-sm font-medium">← Back</button>
-        <span className="text-xs text-[var(--text-dim)] font-medium">{totalSets} sets logged</span>
+        <button onClick={() => router.push("/")} className="text-[var(--accent)] text-sm font-medium">&larr; Retour</button>
+        <span className="text-xs text-[var(--text-dim)] font-medium">{totalSets} s\u00e9ries</span>
       </div>
 
       <h1 className="text-xl font-extrabold text-[var(--foreground)] mb-0.5">{day.label}</h1>
@@ -442,9 +442,9 @@ function SessionContent() {
 
       {/* Session wrap-up */}
       <div className="border border-[var(--border)] rounded-2xl p-4 bg-white shadow-sm mt-6">
-        <h3 className="font-bold text-sm mb-3 text-[var(--foreground)]">Session Wrap-Up</h3>
+        <h3 className="font-bold text-sm mb-3 text-[var(--foreground)]">Bilan de la s\u00e9ance</h3>
         <div className="mb-3">
-          <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">Overall RPE</label>
+          <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">RPE global</label>
           <div className="flex gap-1.5">
             {[5, 6, 7, 8, 9, 10].map((v) => (
               <button key={v} onClick={() => setSessionRpe(v)}
@@ -457,7 +457,7 @@ function SessionContent() {
         <div className="mb-4">
           <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">Notes</label>
           <textarea value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)}
-            placeholder="How did it feel? Any pain? Breakthroughs?" rows={3}
+            placeholder="Comment c'\u00e9tait ? Douleurs ? Progr\u00e8s ?" rows={3}
             className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm resize-none text-[var(--foreground)]" />
         </div>
         <button onClick={saveSession} disabled={saving || totalSets === 0}
@@ -465,7 +465,7 @@ function SessionContent() {
             totalSets === 0 ? "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)] cursor-not-allowed"
               : "bg-[var(--accent)] text-white shadow-sm active:opacity-90"
           }`}>
-          {saving ? "Saving..." : `Save Session (${totalSets} sets)`}
+          {saving ? "Sauvegarde..." : `Sauvegarder (${totalSets} s\u00e9ries)`}
         </button>
       </div>
 

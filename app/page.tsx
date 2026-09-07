@@ -9,6 +9,20 @@ const tagColors: Record<string, string> = {
   flag: "bg-[var(--orange-bg)] text-[var(--orange)]",
 };
 
+const frenchDayLabels: Record<string, string> = {
+  day1: "Jour 1 — Tirage + Flag (Volume)",
+  day2: "Jour 2 — Pouss\u00e9e + \u00c9quilibre (Volume)",
+  day4: "Jour 4 — Tirage + Flag (Intensit\u00e9)",
+  day5: "Jour 5 — Pouss\u00e9e (Intensit\u00e9)",
+};
+
+const frenchFocus: Record<string, string> = {
+  day1: "Front lever volume + Human flag",
+  day2: "HSPU volume + \u00e9quilibre",
+  day4: "Front lever intensit\u00e9 + Human flag",
+  day5: "HSPU intensit\u00e9 + force",
+};
+
 export default function Home() {
   const today = new Date();
   const dayOfWeek = today.getDay();
@@ -17,9 +31,9 @@ export default function Home() {
 
   return (
     <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-[var(--foreground)] mb-0.5">Training</h1>
+      <h1 className="text-2xl font-extrabold text-[var(--foreground)] mb-0.5">Entra\u00eenement</h1>
       <p className="text-sm text-[var(--text-dim)] mb-8">
-        Mesocycle {currentRoutine.mesocycle} &middot; Week {currentRoutine.week}
+        M\u00e9socycle {currentRoutine.mesocycle} &middot; Semaine {currentRoutine.week}
       </p>
 
       <div className="space-y-3">
@@ -36,10 +50,10 @@ export default function Home() {
               }`}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-[0.95rem]">{day.label}</span>
+                <span className="font-bold text-[0.95rem]">{frenchDayLabels[day.id] || day.label}</span>
                 {isSuggested && (
                   <span className="text-xs font-bold text-[var(--accent)]">
-                    TODAY
+                    AUJOURD&apos;HUI
                   </span>
                 )}
               </div>
@@ -50,7 +64,7 @@ export default function Home() {
                   </span>
                 ))}
               </div>
-              <p className="text-sm text-[var(--text-dim)] mt-1">{day.focus}</p>
+              <p className="text-sm text-[var(--text-dim)] mt-1">{frenchFocus[day.id] || day.focus}</p>
             </Link>
           );
         })}
@@ -58,7 +72,7 @@ export default function Home() {
 
       <div className="mt-8 pt-6 border-t border-[var(--border)]">
         <p className="text-xs text-[var(--text-dim)] text-center">
-          Wed: Run &middot; Sat: Rest &middot; Sun: Run
+          Mer : Course &middot; Sam : Repos &middot; Dim : Course
         </p>
       </div>
     </main>
