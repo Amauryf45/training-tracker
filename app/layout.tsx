@@ -4,7 +4,7 @@ import TabBar from "./components/tab-bar";
 
 export const metadata: Metadata = {
   title: "Training Tracker",
-  description: "Suivi d'entra\u00eenement — Front Lever, HSPU, Human Flag",
+  description: "Suivi d'entraînement — Front Lever, HSPU, Human Flag",
   manifest: "/manifest.json",
 };
 

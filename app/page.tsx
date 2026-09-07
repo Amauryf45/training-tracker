@@ -11,16 +11,16 @@ const tagColors: Record<string, string> = {
 
 const frenchDayLabels: Record<string, string> = {
   day1: "Jour 1 — Tirage + Flag (Volume)",
-  day2: "Jour 2 — Pouss\u00e9e + \u00c9quilibre (Volume)",
-  day4: "Jour 4 — Tirage + Flag (Intensit\u00e9)",
-  day5: "Jour 5 — Pouss\u00e9e (Intensit\u00e9)",
+  day2: "Jour 2 — Poussée + Équilibre (Volume)",
+  day4: "Jour 4 — Tirage + Flag (Intensité)",
+  day5: "Jour 5 — Poussée (Intensité)",
 };
 
 const frenchFocus: Record<string, string> = {
   day1: "Front lever volume + Human flag",
-  day2: "HSPU volume + \u00e9quilibre",
-  day4: "Front lever intensit\u00e9 + Human flag",
-  day5: "HSPU intensit\u00e9 + force",
+  day2: "HSPU volume + équilibre",
+  day4: "Front lever intensité + Human flag",
+  day5: "HSPU intensité + force",
 };
 
 export default function Home() {
@@ -31,9 +31,9 @@ export default function Home() {
 
   return (
     <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-[var(--foreground)] mb-0.5">Entra\u00eenement</h1>
+      <h1 className="text-2xl font-extrabold text-[var(--foreground)] mb-0.5">Entraînement</h1>
       <p className="text-sm text-[var(--text-dim)] mb-8">
-        M\u00e9socycle {currentRoutine.mesocycle} &middot; Semaine {currentRoutine.week}
+        Mésocycle {currentRoutine.mesocycle} &middot; Semaine {currentRoutine.week}
       </p>
 
       <div className="space-y-3">

@@ -56,13 +56,13 @@ export default function HistoryPage() {
     <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
       <h1 className="text-2xl font-extrabold text-[var(--foreground)] mb-1">Historique</h1>
       <p className="text-sm text-[var(--text-dim)] mb-6">
-        {sessions.length} s\u00e9ance{sessions.length !== 1 ? "s" : ""} enregistr\u00e9e{sessions.length !== 1 ? "s" : ""}
+        {sessions.length} séance{sessions.length !== 1 ? "s" : ""} enregistrée{sessions.length !== 1 ? "s" : ""}
       </p>
 
       {sessions.length === 0 ? (
         <div className="bg-white border border-[var(--border)] rounded-2xl p-6 shadow-sm text-center">
           <p className="text-3xl mb-3">&#128170;</p>
-          <p className="text-sm text-[var(--text-dim)]">Pas encore de s\u00e9ances enregistr\u00e9es.<br />Commence un entra\u00eenement !</p>
+          <p className="text-sm text-[var(--text-dim)]">Pas encore de séances enregistrées.<br />Commence un entraînement !</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -91,7 +91,7 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[var(--text-dim)]">{session.dayLabel}</span>
                     <span className="text-xs text-[var(--text-dim)]">&middot;</span>
-                    <span className="text-xs text-[var(--text-dim)]">{totalSets} s\u00e9ries</span>
+                    <span className="text-xs text-[var(--text-dim)]">{totalSets} séries</span>
                     {session.completedAt && (
                       <>
                         <span className="text-xs text-[var(--text-dim)]">&middot;</span>

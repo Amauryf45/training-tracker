@@ -148,7 +148,7 @@ export default function TimerPage() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className={`text-4xl font-extrabold tabular-nums ${done ? "text-[var(--green)]" : "text-[var(--foreground)]"}`}>
-              {done ? "Termin\u00e9 !" : formatTime(displayTime)}
+              {done ? "Terminé !" : formatTime(displayTime)}
             </span>
             {mode === "countdown" && !running && !done && (
               <span className="text-xs text-[var(--text-dim)] mt-1">/ {formatTime(duration)}</span>
@@ -177,7 +177,7 @@ export default function TimerPage() {
             onClick={handleReset}
             className="w-16 h-16 rounded-full bg-[var(--surface2)] border border-[var(--border)] text-[var(--text-dim)] text-xs font-bold active:bg-[var(--border)] flex items-center justify-center"
           >
-            Reset
+            RAZ
           </button>
         </div>
 

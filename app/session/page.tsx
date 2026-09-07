@@ -47,7 +47,7 @@ function ExerciseInfoModal({ info, name, onClose }: { info: ExerciseInfo; name: 
         <p className="text-sm text-[var(--foreground)] mb-4 leading-relaxed">{info.description}</p>
 
         <div className="mb-4">
-          <h4 className="text-xs font-bold text-[var(--green)] uppercase tracking-wider mb-2">Points cl\u00e9s</h4>
+          <h4 className="text-xs font-bold text-[var(--green)] uppercase tracking-wider mb-2">Points clés</h4>
           <ul className="space-y-1.5">
             {info.cues.map((cue, i) => (
               <li key={i} className="text-sm text-[var(--foreground)] flex gap-2">
@@ -110,7 +110,7 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Repos termin\u00e9 !" : "Repos"}</div>
+          <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Repos terminé !" : "Repos"}</div>
           <div className="text-xs text-[var(--text-dim)] truncate">{exerciseName} &middot; {formatTime(duration)}</div>
         </div>
         <button onClick={onDismiss} className={`px-4 py-2 rounded-xl text-xs font-bold ${done ? "bg-[var(--green)] text-white" : "bg-[var(--surface2)] text-[var(--text-dim)]"}`}>
@@ -144,7 +144,7 @@ function HoldTimer({ onStop }: { onStop: (seconds: number) => void }) {
           onClick={() => onStop(elapsed)}
           className="bg-[var(--accent)] text-white px-8 py-3 rounded-2xl font-bold text-sm"
         >
-          Stop
+          Arrêter
         </button>
       </div>
     </div>
@@ -283,13 +283,13 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm text-[var(--foreground)] truncate">{exercise.name}</div>
             <div className="text-xs text-[var(--text-dim)] mt-0.5">
-              {exercise.prescription}{exercise.rest && ` · ${exercise.rest} rest`}
+              {exercise.prescription}{exercise.rest && ` · ${exercise.rest} repos`}
             </div>
           </div>
           <div className="flex items-center gap-2 ml-2 shrink-0">
             {completedSets > 0 && (
               <span className="text-xs font-bold text-[var(--green)] bg-[var(--green-bg)] px-2 py-0.5 rounded-md">
-                {completedSets} {isHold ? "maintiens" : "s\u00e9ries"}
+                {completedSets} {isHold ? "maintiens" : "séries"}
               </span>
             )}
             {info && (
@@ -310,7 +310,7 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
           <div className="flex items-center gap-2 mb-1 text-xs text-[var(--text-dim)] font-medium">
             <span className="w-6"></span>
             <div className="flex-1 flex gap-2">
-              <span className="flex-1 text-center">{isHold ? "Seconds" : "Reps"}</span>
+              <span className="flex-1 text-center">{isHold ? "Secondes" : "Reps"}</span>
               {exercise.tag !== "prehab" && <span className="w-16 text-center">kg</span>}
               <span className="w-14 text-center">RPE</span>
             </div>
@@ -323,7 +323,7 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
           <div className="flex gap-2 mt-3">
             <button onClick={addSet}
               className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-[var(--surface2)] text-[var(--accent)] border border-[var(--border)] active:bg-[var(--border)]">
-              + S\u00e9rie
+              + Série
             </button>
             {log.sets.length > 0 && (
               <button onClick={removeLastSet}
@@ -394,15 +394,15 @@ function SessionContent() {
     try {
       const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
       if (res.ok) { setSaved(true); setTimeout(() => router.push("/"), 1500); }
-    } catch { alert("\u00c9chec de la sauvegarde. V\u00e9rifie ta connexion."); }
+    } catch { alert("Échec de la sauvegarde. Vérifie ta connexion."); }
     finally { setSaving(false); }
   };
 
   if (!day) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <p className="text-[var(--text-dim)]">Day not found</p>
-        <button onClick={() => router.push("/")} className="mt-4 text-[var(--accent)] underline ml-2">Back</button>
+        <p className="text-[var(--text-dim)]">Jour introuvable</p>
+        <button onClick={() => router.push("/")} className="mt-4 text-[var(--accent)] underline ml-2">Retour</button>
       </main>
     );
   }
@@ -412,7 +412,7 @@ function SessionContent() {
       <main className="flex-1 flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-[var(--green-bg)] text-[var(--green)] flex items-center justify-center text-3xl mx-auto mb-4">&#10003;</div>
-          <p className="text-[var(--green)] font-bold text-lg">S\u00e9ance sauvegard\u00e9e !</p>
+          <p className="text-[var(--green)] font-bold text-lg">Séance sauvegardée !</p>
         </div>
       </main>
     );
@@ -424,7 +424,7 @@ function SessionContent() {
     <main className={`flex-1 max-w-lg mx-auto w-full px-4 py-6 ${timerActive ? "pb-36" : "pb-8"}`}>
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => router.push("/")} className="text-[var(--accent)] text-sm font-medium">&larr; Retour</button>
-        <span className="text-xs text-[var(--text-dim)] font-medium">{totalSets} s\u00e9ries</span>
+        <span className="text-xs text-[var(--text-dim)] font-medium">{totalSets} séries</span>
       </div>
 
       <h1 className="text-xl font-extrabold text-[var(--foreground)] mb-0.5">{day.label}</h1>
@@ -442,7 +442,7 @@ function SessionContent() {
 
       {/* Session wrap-up */}
       <div className="border border-[var(--border)] rounded-2xl p-4 bg-white shadow-sm mt-6">
-        <h3 className="font-bold text-sm mb-3 text-[var(--foreground)]">Bilan de la s\u00e9ance</h3>
+        <h3 className="font-bold text-sm mb-3 text-[var(--foreground)]">Bilan de la séance</h3>
         <div className="mb-3">
           <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">RPE global</label>
           <div className="flex gap-1.5">
@@ -457,7 +457,7 @@ function SessionContent() {
         <div className="mb-4">
           <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">Notes</label>
           <textarea value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)}
-            placeholder="Comment c'\u00e9tait ? Douleurs ? Progr\u00e8s ?" rows={3}
+            placeholder="Comment c'était ? Douleurs ? Progrès ?" rows={3}
             className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm resize-none text-[var(--foreground)]" />
         </div>
         <button onClick={saveSession} disabled={saving || totalSets === 0}
@@ -465,7 +465,7 @@ function SessionContent() {
             totalSets === 0 ? "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)] cursor-not-allowed"
               : "bg-[var(--accent)] text-white shadow-sm active:opacity-90"
           }`}>
-          {saving ? "Sauvegarde..." : `Sauvegarder (${totalSets} s\u00e9ries)`}
+          {saving ? "Sauvegarde..." : `Sauvegarder (${totalSets} séries)`}
         </button>
       </div>
 
@@ -476,7 +476,7 @@ function SessionContent() {
 
 export default function SessionPage() {
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[var(--text-dim)]">Loading...</div>}>
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center text-[var(--text-dim)]">Chargement...</div>}>
       <SessionContent />
     </Suspense>
   );
