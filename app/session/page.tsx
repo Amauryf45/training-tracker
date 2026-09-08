@@ -339,6 +339,39 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
   );
 }
 
+/* ─── LocalStorage helpers ─── */
+function getDraftKey(dayId: string) { return `session-draft-${dayId}`; }
+
+interface SessionDraft {
+  sessionStarted: string;
+  exerciseLogs: Record<string, ExerciseLog>;
+  sessionNotes: string;
+  sessionRpe: number;
+}
+
+function loadDraft(dayId: string): SessionDraft | null {
+  try {
+    const raw = localStorage.getItem(getDraftKey(dayId));
+    if (!raw) return null;
+    const draft: SessionDraft = JSON.parse(raw);
+    // Expire drafts older than 12 hours
+    const age = Date.now() - new Date(draft.sessionStarted).getTime();
+    if (age > 12 * 60 * 60 * 1000) {
+      localStorage.removeItem(getDraftKey(dayId));
+      return null;
+    }
+    return draft;
+  } catch { return null; }
+}
+
+function saveDraft(dayId: string, draft: SessionDraft) {
+  try { localStorage.setItem(getDraftKey(dayId), JSON.stringify(draft)); } catch {}
+}
+
+function clearDraft(dayId: string) {
+  try { localStorage.removeItem(getDraftKey(dayId)); } catch {}
+}
+
 /* ─── Session Page ─── */
 function SessionContent() {
   const searchParams = useSearchParams();
@@ -346,11 +379,14 @@ function SessionContent() {
   const dayId = searchParams.get("day");
   const day = currentRoutine.days.find((d) => d.id === dayId);
 
-  const [sessionStarted] = useState(() => new Date().toISOString());
+  // Restore from localStorage or init fresh
+  const draft = dayId ? loadDraft(dayId) : null;
+
+  const [sessionStarted] = useState(() => draft?.sessionStarted || new Date().toISOString());
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [sessionNotes, setSessionNotes] = useState("");
-  const [sessionRpe, setSessionRpe] = useState(0);
+  const [sessionNotes, setSessionNotes] = useState(draft?.sessionNotes || "");
+  const [sessionRpe, setSessionRpe] = useState(draft?.sessionRpe || 0);
   const [timerActive, setTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);
   const [timerExercise, setTimerExercise] = useState("");
@@ -360,10 +396,11 @@ function SessionContent() {
     setTimerDuration(seconds);
     setTimerExercise(exerciseName);
     setTimerActive(true);
-    setTimerKey((k) => k + 1); // force re-mount to reset
+    setTimerKey((k) => k + 1);
   };
 
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, ExerciseLog>>(() => {
+    if (draft?.exerciseLogs) return draft.exerciseLogs;
     if (!day) return {};
     const logs: Record<string, ExerciseLog> = {};
     for (const section of day.sections) {
@@ -373,6 +410,12 @@ function SessionContent() {
     }
     return logs;
   });
+
+  // Auto-save to localStorage on every change
+  useEffect(() => {
+    if (!dayId || saved) return;
+    saveDraft(dayId, { sessionStarted, exerciseLogs, sessionNotes, sessionRpe });
+  }, [dayId, sessionStarted, exerciseLogs, sessionNotes, sessionRpe, saved]);
 
   const updateExerciseLog = useCallback((exerciseId: string, log: ExerciseLog) => {
     setExerciseLogs((prev) => ({ ...prev, [exerciseId]: log }));
@@ -393,7 +436,7 @@ function SessionContent() {
     };
     try {
       const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
-      if (res.ok) { setSaved(true); setTimeout(() => router.push("/"), 1500); }
+      if (res.ok) { clearDraft(dayId!); setSaved(true); setTimeout(() => router.push("/"), 1500); }
     } catch { alert("Échec de la sauvegarde. Vérifie ta connexion."); }
     finally { setSaving(false); }
   };
