@@ -18,9 +18,9 @@ const borderColors: Record<string, string> = {
 function parseRestSeconds(rest: string): number {
   if (!rest) return 0;
   const minMatch = rest.match(/([\d.]+)\s*min/);
-  if (minMatch) return Math.round(parseFloat(minMatch[1]) * 60);
+  if (minMatch) return Math.round(Number.parseFloat(minMatch[1]) * 60);
   const secMatch = rest.match(/([\d.]+)\s*s/);
-  if (secMatch) return Math.round(parseFloat(secMatch[1]));
+  if (secMatch) return Math.round(Number.parseFloat(secMatch[1]));
   return 0;
 }
 
@@ -35,36 +35,28 @@ function ExerciseInfoModal({ info, name, onClose }: { info: ExerciseInfo; name: 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
-      <div
-        className="relative bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-base text-[var(--foreground)]">{name}</h3>
           <button onClick={onClose} className="text-[var(--text-dim)] text-xl leading-none px-2">&times;</button>
         </div>
-
         <p className="text-sm text-[var(--foreground)] mb-4 leading-relaxed">{info.description}</p>
-
         <div className="mb-4">
           <h4 className="text-xs font-bold text-[var(--green)] uppercase tracking-wider mb-2">Points clés</h4>
           <ul className="space-y-1.5">
             {info.cues.map((cue, i) => (
               <li key={i} className="text-sm text-[var(--foreground)] flex gap-2">
-                <span className="text-[var(--green)] shrink-0">&#10003;</span>
-                {cue}
+                <span className="text-[var(--green)] shrink-0">✓</span>{cue}
               </li>
             ))}
           </ul>
         </div>
-
         <div>
           <h4 className="text-xs font-bold text-[var(--red)] uppercase tracking-wider mb-2">Erreurs courantes</h4>
           <ul className="space-y-1.5">
             {info.mistakes.map((m, i) => (
               <li key={i} className="text-sm text-[var(--foreground)] flex gap-2">
-                <span className="text-[var(--red)] shrink-0">&#10007;</span>
-                {m}
+                <span className="text-[var(--red)] shrink-0">✗</span>{m}
               </li>
             ))}
           </ul>
@@ -111,7 +103,7 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Repos terminé !" : "Repos"}</div>
-          <div className="text-xs text-[var(--text-dim)] truncate">{exerciseName} &middot; {formatTime(duration)}</div>
+          <div className="text-xs text-[var(--text-dim)] truncate">{exerciseName} · {formatTime(duration)}</div>
         </div>
         <button onClick={onDismiss} className={`px-4 py-2 rounded-xl text-xs font-bold ${done ? "bg-[var(--green)] text-white" : "bg-[var(--surface2)] text-[var(--text-dim)]"}`}>
           {done ? "OK" : "Passer"}
@@ -121,7 +113,7 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
   );
 }
 
-/* ─── Hold Timer (count UP) ─── */
+/* ─── Hold Timer ─── */
 function HoldTimer({ onStop }: { onStop: (seconds: number) => void }) {
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -140,10 +132,7 @@ function HoldTimer({ onStop }: { onStop: (seconds: number) => void }) {
       <div className="bg-white rounded-3xl p-8 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-wider mb-2">Maintien...</div>
         <div className="text-5xl font-extrabold text-[var(--foreground)] tabular-nums mb-4">{elapsed}s</div>
-        <button
-          onClick={() => onStop(elapsed)}
-          className="bg-[var(--accent)] text-white px-8 py-3 rounded-2xl font-bold text-sm"
-        >
+        <button onClick={() => onStop(elapsed)} className="bg-[var(--accent)] text-white px-8 py-3 rounded-2xl font-bold text-sm">
           Arrêter
         </button>
       </div>
@@ -152,16 +141,22 @@ function HoldTimer({ onStop }: { onStop: (seconds: number) => void }) {
 }
 
 /* ─── Set Input Row ─── */
-function SetInput({ exercise, setIndex, set, onUpdate }: {
-  exercise: ExerciseDef; setIndex: number; set: SetLog; onUpdate: (set: SetLog) => void;
+function SetInput({ exercise, setIndex, set, onUpdate, readOnly }: {
+  exercise: ExerciseDef; setIndex: number; set: SetLog; onUpdate: (set: SetLog) => void; readOnly: boolean;
 }) {
   const isHold = exercise.type === "hold";
   const [holdTimerActive, setHoldTimerActive] = useState(false);
 
-  const handleHoldStop = (seconds: number) => {
-    setHoldTimerActive(false);
-    onUpdate({ ...set, value: seconds });
-  };
+  if (readOnly) {
+    return (
+      <div className="flex items-center gap-2 py-1">
+        <span className="text-xs text-[var(--text-dim)] w-6 shrink-0 font-medium">#{setIndex + 1}</span>
+        <span className="text-sm font-semibold">{set.value}{isHold ? "s" : " reps"}</span>
+        {set.weight > 0 && <span className="text-sm text-[var(--text-dim)]">+{set.weight}kg</span>}
+        {set.rpe > 0 && <span className="text-xs text-[var(--text-dim)]">@RPE {set.rpe}</span>}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -169,33 +164,23 @@ function SetInput({ exercise, setIndex, set, onUpdate }: {
         <span className="text-xs text-[var(--text-dim)] w-6 shrink-0 font-medium">#{setIndex + 1}</span>
         <div className="flex-1 flex gap-2">
           <div className="flex-1 flex gap-1">
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder={isHold ? "sec" : "reps"}
-              value={set.value || ""}
-              onChange={(e) => onUpdate({ ...set, value: parseFloat(e.target.value) || 0 })}
-              className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-center text-[var(--foreground)]"
-            />
+            <input type="number" inputMode="decimal" placeholder={isHold ? "sec" : "reps"}
+              value={set.value || ""} onChange={(e) => onUpdate({ ...set, value: Number.parseFloat(e.target.value) || 0 })}
+              className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-center text-[var(--foreground)]" />
             {isHold && (
-              <button
-                onClick={() => setHoldTimerActive(true)}
-                className="shrink-0 w-10 bg-[var(--surface2)] border border-[var(--border)] rounded-lg text-xs text-[var(--accent)] font-bold"
-                title="Start hold timer"
-              >
-                &#9201;
-              </button>
+              <button onClick={() => setHoldTimerActive(true)}
+                className="shrink-0 w-10 bg-[var(--surface2)] border border-[var(--border)] rounded-lg text-xs text-[var(--accent)] font-bold" title="Chrono maintien">⏱</button>
             )}
           </div>
           {exercise.tag !== "prehab" && (
             <div className="w-16">
               <input type="number" inputMode="decimal" placeholder="kg" value={set.weight || ""}
-                onChange={(e) => onUpdate({ ...set, weight: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => onUpdate({ ...set, weight: Number.parseFloat(e.target.value) || 0 })}
                 className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-center text-[var(--foreground)]" />
             </div>
           )}
           <div className="w-14">
-            <select value={set.rpe || ""} onChange={(e) => onUpdate({ ...set, rpe: parseInt(e.target.value) || 0 })}
+            <select value={set.rpe || ""} onChange={(e) => onUpdate({ ...set, rpe: Number.parseInt(e.target.value) || 0 })}
               className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-1 py-2.5 text-center appearance-none text-[var(--foreground)]">
               <option value="">RPE</option>
               {[5, 6, 7, 8, 9, 10].map((v) => (<option key={v} value={v}>{v}</option>))}
@@ -203,28 +188,30 @@ function SetInput({ exercise, setIndex, set, onUpdate }: {
           </div>
         </div>
       </div>
-      {holdTimerActive && <HoldTimer onStop={handleHoldStop} />}
+      {holdTimerActive && <HoldTimer onStop={(sec) => { setHoldTimerActive(false); onUpdate({ ...set, value: sec }); }} />}
     </>
   );
 }
 
 /* ─── Exercise Card ─── */
-function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
+function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer, readOnly }: {
   exercise: ExerciseDef; log: ExerciseLog;
   onLogUpdate: (log: ExerciseLog) => void;
   onStartTimer: (seconds: number, name: string) => void;
+  readOnly: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const isPrehab = exercise.tag === "prehab";
-  const [prehapDone, setPrehapDone] = useState(false);
   const info = getExerciseInfo(exercise.name);
+  const completedSets = log.sets.filter((s) => s.value > 0).length;
+  const isHold = exercise.type === "hold";
+  const borderColor = borderColors[exercise.tag] || "border-l-[var(--border)]";
 
   const addSet = () => {
     const newSet: SetLog = { value: 0, weight: 0, rpe: 0, completedAt: new Date().toISOString() };
     onLogUpdate({ ...log, sets: [...log.sets, newSet] });
     if (!expanded) setExpanded(true);
-    // Start rest timer
     const restSec = parseRestSeconds(exercise.rest);
     if (restSec > 0) onStartTimer(restSec, exercise.name);
   };
@@ -236,41 +223,31 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
   };
 
   const removeLastSet = () => {
-    if (log.sets.length === 0) return;
-    onLogUpdate({ ...log, sets: log.sets.slice(0, -1) });
+    if (log.sets.length > 0) onLogUpdate({ ...log, sets: log.sets.slice(0, -1) });
   };
 
-  const markPrehapDone = () => {
-    setPrehapDone(true);
-    const doneSet: SetLog = { value: 1, weight: 0, rpe: 0, completedAt: new Date().toISOString() };
-    onLogUpdate({ ...log, sets: [doneSet] });
-  };
-
-  const completedSets = log.sets.filter((s) => s.value > 0).length;
-  const isHold = exercise.type === "hold";
-  const borderColor = borderColors[exercise.tag] || "border-l-[var(--border)]";
-
-  // Quick-log for warm-up
+  // Quick-log prehab
   if (isPrehab) {
+    const done = completedSets > 0;
     return (
       <div className={`bg-white border border-[var(--border)] border-l-[3px] ${borderColor} rounded-xl p-3 mb-2 shadow-sm flex items-center gap-3`}>
-        <button
-          onClick={markPrehapDone}
-          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-            prehapDone ? "bg-[var(--green)] border-[var(--green)] text-white" : "border-[var(--border)] text-transparent"
-          }`}
-        >
-          {prehapDone && <span className="text-xs">&#10003;</span>}
-        </button>
+        {!readOnly ? (
+          <button onClick={() => {
+            if (!done) onLogUpdate({ ...log, sets: [{ value: 1, weight: 0, rpe: 0, completedAt: new Date().toISOString() }] });
+            else onLogUpdate({ ...log, sets: [] });
+          }} className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+            done ? "bg-[var(--green)] border-[var(--green)] text-white" : "border-[var(--border)] text-transparent"
+          }`}>{done && <span className="text-xs">✓</span>}</button>
+        ) : done ? (
+          <span className="w-7 h-7 rounded-full bg-[var(--green)] text-white flex items-center justify-center text-xs shrink-0">✓</span>
+        ) : (
+          <span className="w-7 h-7 rounded-full border-2 border-[var(--border)] shrink-0" />
+        )}
         <div className="flex-1 min-w-0">
-          <div className={`font-medium text-sm truncate ${prehapDone ? "line-through text-[var(--text-dim)]" : "text-[var(--foreground)]"}`}>
-            {exercise.name}
-          </div>
+          <div className={`font-medium text-sm truncate ${done ? "line-through text-[var(--text-dim)]" : "text-[var(--foreground)]"}`}>{exercise.name}</div>
           <div className="text-xs text-[var(--text-dim)]">{exercise.prescription}</div>
         </div>
-        {info && (
-          <button onClick={() => setShowInfo(true)} className="text-[var(--text-dim)] text-lg shrink-0 px-1">&#9432;</button>
-        )}
+        {info && <button onClick={() => setShowInfo(true)} className="text-[var(--text-dim)] text-lg shrink-0 px-1">ⓘ</button>}
         {showInfo && info && <ExerciseInfoModal info={info} name={exercise.name} onClose={() => setShowInfo(false)} />}
       </div>
     );
@@ -292,10 +269,7 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
                 {completedSets} {isHold ? "maintiens" : "séries"}
               </span>
             )}
-            {info && (
-              <button onClick={(e) => { e.stopPropagation(); setShowInfo(true); }}
-                className="text-[var(--text-dim)] text-sm px-1">&#9432;</button>
-            )}
+            {info && <button onClick={(e) => { e.stopPropagation(); setShowInfo(true); }} className="text-[var(--text-dim)] text-sm px-1">ⓘ</button>}
             <span className="text-[var(--text-dim)] text-xs">{expanded ? "▲" : "▼"}</span>
           </div>
         </div>
@@ -303,35 +277,35 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
 
       {expanded && (
         <div className="mt-3 pt-3 border-t border-[var(--border)]">
-          {exercise.note && (
-            <p className="text-xs text-[var(--text-dim)] italic mb-2">{exercise.note}</p>
+          {exercise.note && <p className="text-xs text-[var(--text-dim)] italic mb-2">{exercise.note}</p>}
+
+          {!readOnly && log.sets.length > 0 && (
+            <div className="flex items-center gap-2 mb-1 text-xs text-[var(--text-dim)] font-medium">
+              <span className="w-6" />
+              <div className="flex-1 flex gap-2">
+                <span className="flex-1 text-center">{isHold ? "Secondes" : "Reps"}</span>
+                {exercise.tag !== "prehab" && <span className="w-16 text-center">kg</span>}
+                <span className="w-14 text-center">RPE</span>
+              </div>
+            </div>
           )}
 
-          <div className="flex items-center gap-2 mb-1 text-xs text-[var(--text-dim)] font-medium">
-            <span className="w-6"></span>
-            <div className="flex-1 flex gap-2">
-              <span className="flex-1 text-center">{isHold ? "Secondes" : "Reps"}</span>
-              {exercise.tag !== "prehab" && <span className="w-16 text-center">kg</span>}
-              <span className="w-14 text-center">RPE</span>
-            </div>
-          </div>
-
           {log.sets.map((set, i) => (
-            <SetInput key={i} exercise={exercise} setIndex={i} set={set} onUpdate={(s) => updateSet(i, s)} />
+            <SetInput key={i} exercise={exercise} setIndex={i} set={set} onUpdate={(s) => updateSet(i, s)} readOnly={readOnly} />
           ))}
 
-          <div className="flex gap-2 mt-3">
-            <button onClick={addSet}
-              className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-[var(--surface2)] text-[var(--accent)] border border-[var(--border)] active:bg-[var(--border)]">
-              + Série
-            </button>
-            {log.sets.length > 0 && (
-              <button onClick={removeLastSet}
-                className="text-xs font-semibold py-2.5 px-4 rounded-xl text-[var(--red)] bg-red-50 active:bg-red-100">
-                Retirer
+          {!readOnly && (
+            <div className="flex gap-2 mt-3">
+              <button onClick={addSet} className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-[var(--surface2)] text-[var(--accent)] border border-[var(--border)] active:bg-[var(--border)]">
+                + Série
               </button>
-            )}
-          </div>
+              {log.sets.length > 0 && (
+                <button onClick={removeLastSet} className="text-xs font-semibold py-2.5 px-4 rounded-xl text-[var(--red)] bg-red-50 active:bg-red-100">
+                  Retirer
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {showInfo && info && <ExerciseInfoModal info={info} name={exercise.name} onClose={() => setShowInfo(false)} />}
@@ -339,8 +313,8 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer }: {
   );
 }
 
-/* ─── LocalStorage helpers ─── */
-function getDraftKey(dayId: string) { return `session-draft-${dayId}`; }
+/* ─── LocalStorage draft ─── */
+function getDraftKey(dayId: string, dateStr: string) { return `draft-${dayId}-${dateStr}`; }
 
 interface SessionDraft {
   sessionStarted: string;
@@ -349,44 +323,23 @@ interface SessionDraft {
   sessionRpe: number;
 }
 
-function loadDraft(dayId: string): SessionDraft | null {
-  try {
-    const raw = localStorage.getItem(getDraftKey(dayId));
-    if (!raw) return null;
-    const draft: SessionDraft = JSON.parse(raw);
-    // Expire drafts older than 12 hours
-    const age = Date.now() - new Date(draft.sessionStarted).getTime();
-    if (age > 12 * 60 * 60 * 1000) {
-      localStorage.removeItem(getDraftKey(dayId));
-      return null;
-    }
-    return draft;
-  } catch { return null; }
-}
-
-function saveDraft(dayId: string, draft: SessionDraft) {
-  try { localStorage.setItem(getDraftKey(dayId), JSON.stringify(draft)); } catch {}
-}
-
-function clearDraft(dayId: string) {
-  try { localStorage.removeItem(getDraftKey(dayId)); } catch {}
-}
-
 /* ─── Session Page ─── */
 function SessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const dayId = searchParams.get("day");
+  const dayId = searchParams.get("day") || "";
+  const dateStr = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const isViewMode = searchParams.get("view") === "true";
   const day = currentRoutine.days.find((d) => d.id === dayId);
 
-  // Restore from localStorage or init fresh
-  const draft = dayId ? loadDraft(dayId) : null;
-
-  const [sessionStarted] = useState(() => draft?.sessionStarted || new Date().toISOString());
+  const [mode, setMode] = useState<"view" | "edit" | "new">(isViewMode ? "view" : "new");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [sessionNotes, setSessionNotes] = useState(draft?.sessionNotes || "");
-  const [sessionRpe, setSessionRpe] = useState(draft?.sessionRpe || 0);
+  const [loadedRemote, setLoadedRemote] = useState(false);
+  const [sessionStarted, setSessionStarted] = useState(() => new Date().toISOString());
+  const [sessionNotes, setSessionNotes] = useState("");
+  const [sessionRpe, setSessionRpe] = useState(0);
+  const [existingSessionId, setExistingSessionId] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);
   const [timerExercise, setTimerExercise] = useState("");
@@ -399,8 +352,7 @@ function SessionContent() {
     setTimerKey((k) => k + 1);
   };
 
-  const [exerciseLogs, setExerciseLogs] = useState<Record<string, ExerciseLog>>(() => {
-    if (draft?.exerciseLogs) return draft.exerciseLogs;
+  const initEmptyLogs = useCallback((): Record<string, ExerciseLog> => {
     if (!day) return {};
     const logs: Record<string, ExerciseLog> = {};
     for (const section of day.sections) {
@@ -409,13 +361,69 @@ function SessionContent() {
       }
     }
     return logs;
-  });
+  }, [day]);
 
-  // Auto-save to localStorage on every change
+  const [exerciseLogs, setExerciseLogs] = useState<Record<string, ExerciseLog>>(initEmptyLogs);
+
+  // Load existing session from API or draft from localStorage
   useEffect(() => {
-    if (!dayId || saved) return;
-    saveDraft(dayId, { sessionStarted, exerciseLogs, sessionNotes, sessionRpe });
-  }, [dayId, sessionStarted, exerciseLogs, sessionNotes, sessionRpe, saved]);
+    if (!dayId || !day) return;
+
+    // Try localStorage draft first (for in-progress sessions)
+    try {
+      const draftRaw = localStorage.getItem(getDraftKey(dayId, dateStr));
+      if (draftRaw && !isViewMode) {
+        const draft: SessionDraft = JSON.parse(draftRaw);
+        const age = Date.now() - new Date(draft.sessionStarted).getTime();
+        if (age < 12 * 60 * 60 * 1000) {
+          setExerciseLogs(draft.exerciseLogs);
+          setSessionNotes(draft.sessionNotes);
+          setSessionRpe(draft.sessionRpe);
+          setSessionStarted(draft.sessionStarted);
+          setMode("new");
+          setLoadedRemote(true);
+          return;
+        }
+      }
+    } catch {}
+
+    // Fetch from API to check if session exists for this date
+    fetch(`/api/sessions?count=50`)
+      .then((r) => r.json())
+      .then((data) => {
+        const list: SessionLog[] = Array.isArray(data) ? data : [];
+        const existing = list.find((s) => {
+          const sDate = new Date(s.startedAt).toISOString().split("T")[0];
+          return sDate === dateStr && s.dayType === dayId;
+        });
+        if (existing) {
+          // Rebuild exercise logs from saved session
+          const logs = initEmptyLogs();
+          for (const ex of existing.exercises) {
+            if (logs[ex.exerciseId]) {
+              logs[ex.exerciseId] = ex;
+            }
+          }
+          setExerciseLogs(logs);
+          setSessionNotes(existing.notes || "");
+          setSessionRpe(existing.sessionRpe || 0);
+          setSessionStarted(existing.startedAt);
+          setExistingSessionId(existing.id);
+          setMode(isViewMode ? "view" : "new");
+        }
+        setLoadedRemote(true);
+      })
+      .catch(() => setLoadedRemote(true));
+  }, [dayId, dateStr, isViewMode, day, initEmptyLogs]);
+
+  // Auto-save draft to localStorage (only in edit/new mode)
+  useEffect(() => {
+    if (!dayId || mode === "view" || !loadedRemote) return;
+    try {
+      const draft: SessionDraft = { sessionStarted, exerciseLogs, sessionNotes, sessionRpe };
+      localStorage.setItem(getDraftKey(dayId, dateStr), JSON.stringify(draft));
+    } catch {}
+  }, [dayId, dateStr, sessionStarted, exerciseLogs, sessionNotes, sessionRpe, mode, loadedRemote]);
 
   const updateExerciseLog = useCallback((exerciseId: string, log: ExerciseLog) => {
     setExerciseLogs((prev) => ({ ...prev, [exerciseId]: log }));
@@ -425,8 +433,8 @@ function SessionContent() {
     if (!day) return;
     setSaving(true);
     const session: SessionLog = {
-      id: `${dayId}-${Date.now()}`,
-      dayType: dayId!,
+      id: existingSessionId || `${dayId}-${Date.now()}`,
+      dayType: dayId,
       dayLabel: day.label,
       startedAt: sessionStarted,
       completedAt: new Date().toISOString(),
@@ -436,10 +444,16 @@ function SessionContent() {
     };
     try {
       const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
-      if (res.ok) { clearDraft(dayId!); setSaved(true); setTimeout(() => router.push("/"), 1500); }
+      if (res.ok) {
+        try { localStorage.removeItem(getDraftKey(dayId, dateStr)); } catch {}
+        setSaved(true);
+        setTimeout(() => router.push("/"), 1200);
+      }
     } catch { alert("Échec de la sauvegarde. Vérifie ta connexion."); }
     finally { setSaving(false); }
   };
+
+  const readOnly = mode === "view";
 
   if (!day) {
     return (
@@ -454,9 +468,17 @@ function SessionContent() {
     return (
       <main className="flex-1 flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-[var(--green-bg)] text-[var(--green)] flex items-center justify-center text-3xl mx-auto mb-4">&#10003;</div>
+          <div className="w-16 h-16 rounded-full bg-[var(--green-bg)] text-[var(--green)] flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
           <p className="text-[var(--green)] font-bold text-lg">Séance sauvegardée !</p>
         </div>
+      </main>
+    );
+  }
+
+  if (!loadedRemote) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-[var(--text-dim)]">Chargement...</p>
       </main>
     );
   }
@@ -465,20 +487,32 @@ function SessionContent() {
 
   return (
     <main className={`flex-1 max-w-lg mx-auto w-full px-4 py-6 ${timerActive ? "pb-36" : "pb-8"}`}>
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={() => router.push("/")} className="text-[var(--accent)] text-sm font-medium">&larr; Retour</button>
-        <span className="text-xs text-[var(--text-dim)] font-medium">{totalSets} séries</span>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => router.push("/")} className="text-[var(--accent)] text-sm font-medium">← Retour</button>
+        <div className="flex items-center gap-2">
+          {readOnly ? (
+            <button onClick={() => setMode("edit")} className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1.5 rounded-lg">
+              Modifier
+            </button>
+          ) : existingSessionId ? (
+            <span className="text-xs text-[var(--text-dim)]">Mode édition</span>
+          ) : (
+            <span className="text-xs text-[var(--text-dim)]">{totalSets} séries</span>
+          )}
+        </div>
       </div>
 
       <h1 className="text-xl font-extrabold text-[var(--foreground)] mb-0.5">{day.label}</h1>
-      <p className="text-sm text-[var(--text-dim)] mb-6">{day.focus}</p>
+      <p className="text-sm text-[var(--text-dim)] mb-6">{dateStr} · {day.focus}</p>
 
+      {/* Exercise sections */}
       {day.sections.map((section) => (
         <div key={section.title} className="mb-6">
           <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-widest mb-2">{section.title}</h2>
           {section.exercises.map((ex) => (
             <ExerciseCard key={ex.id} exercise={ex} log={exerciseLogs[ex.id]}
-              onLogUpdate={(log) => updateExerciseLog(ex.id, log)} onStartTimer={startTimer} />
+              onLogUpdate={(log) => updateExerciseLog(ex.id, log)} onStartTimer={startTimer} readOnly={readOnly} />
           ))}
         </div>
       ))}
@@ -486,30 +520,41 @@ function SessionContent() {
       {/* Session wrap-up */}
       <div className="border border-[var(--border)] rounded-2xl p-4 bg-white shadow-sm mt-6">
         <h3 className="font-bold text-sm mb-3 text-[var(--foreground)]">Bilan de la séance</h3>
-        <div className="mb-3">
-          <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">RPE global</label>
-          <div className="flex gap-1.5">
-            {[5, 6, 7, 8, 9, 10].map((v) => (
-              <button key={v} onClick={() => setSessionRpe(v)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-                  sessionRpe === v ? "bg-[var(--accent)] text-white shadow-sm" : "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)]"
-                }`}>{v}</button>
-            ))}
-          </div>
-        </div>
-        <div className="mb-4">
-          <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">Notes</label>
-          <textarea value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)}
-            placeholder="Comment c'était ? Douleurs ? Progrès ?" rows={3}
-            className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm resize-none text-[var(--foreground)]" />
-        </div>
-        <button onClick={saveSession} disabled={saving || totalSets === 0}
-          className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-colors ${
-            totalSets === 0 ? "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)] cursor-not-allowed"
-              : "bg-[var(--accent)] text-white shadow-sm active:opacity-90"
-          }`}>
-          {saving ? "Sauvegarde..." : `Sauvegarder (${totalSets} séries)`}
-        </button>
+
+        {readOnly ? (
+          <>
+            {sessionRpe > 0 && <p className="text-sm">RPE global : <strong>{sessionRpe}</strong></p>}
+            {sessionNotes && <p className="text-sm text-[var(--text-dim)] italic mt-2">{sessionNotes}</p>}
+            {!sessionRpe && !sessionNotes && <p className="text-sm text-[var(--text-dim)]">Aucun bilan enregistré</p>}
+          </>
+        ) : (
+          <>
+            <div className="mb-3">
+              <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">RPE global</label>
+              <div className="flex gap-1.5">
+                {[5, 6, 7, 8, 9, 10].map((v) => (
+                  <button key={v} onClick={() => setSessionRpe(v)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                      sessionRpe === v ? "bg-[var(--accent)] text-white shadow-sm" : "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)]"
+                    }`}>{v}</button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">Notes</label>
+              <textarea value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)}
+                placeholder="Comment c'était ? Douleurs ? Progrès ?" rows={3}
+                className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm resize-none text-[var(--foreground)]" />
+            </div>
+            <button onClick={saveSession} disabled={saving || totalSets === 0}
+              className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-colors ${
+                totalSets === 0 ? "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)] cursor-not-allowed"
+                  : "bg-[var(--accent)] text-white shadow-sm active:opacity-90"
+              }`}>
+              {saving ? "Sauvegarde..." : `Sauvegarder (${totalSets} séries)`}
+            </button>
+          </>
+        )}
       </div>
 
       {timerActive && <RestTimer key={timerKey} duration={timerDuration} exerciseName={timerExercise} onDismiss={() => setTimerActive(false)} />}

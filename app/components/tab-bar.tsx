@@ -4,16 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/", label: "Entraînement", icon: "🏋" },
+  { href: "/", label: "Semaines", icon: "📅" },
   { href: "/plan", label: "Programme", icon: "📋" },
   { href: "/timer", label: "Chrono", icon: "⏱" },
-  { href: "/history", label: "Historique", icon: "📊" },
 ];
 
 export default function TabBar() {
   const pathname = usePathname();
 
-  // Hide tab bar during active session
   if (pathname.startsWith("/session")) return null;
 
   return (
