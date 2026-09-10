@@ -393,7 +393,8 @@ function SessionContent() {
       .then((data) => {
         const list: SessionLog[] = Array.isArray(data) ? data : [];
         const existing = list.find((s) => {
-          const sDate = new Date(s.startedAt).toISOString().split("T")[0];
+          const sd = new Date(s.startedAt);
+          const sDate = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, "0")}-${String(sd.getDate()).padStart(2, "0")}`;
           return sDate === dateStr && s.dayType === dayId;
         });
         if (existing) {
