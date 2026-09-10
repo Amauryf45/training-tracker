@@ -86,7 +86,6 @@ function TrainingDayCard({ date, routineDay, session }: {
   const isToday = isSameDay(date, today);
   const isPast = date < today && !isToday;
   const hasSession = !!session;
-  const totalSets = session?.exercises.reduce((n, e) => n + e.sets.length, 0) || 0;
   const dateStr = toLocalDateStr(date);
 
   return (
@@ -115,7 +114,7 @@ function TrainingDayCard({ date, routineDay, session }: {
           )}
           {hasSession && (
             <span className="text-[0.65rem] font-bold text-[var(--green)] bg-[var(--green-bg)] px-1.5 py-0.5 rounded-full">
-              ✓ {totalSets}
+              ✓
             </span>
           )}
         </div>
@@ -269,8 +268,13 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Weeks */}
-      {weeks.map((week) => {
+      {/* Weeks — only render after sessions are loaded to avoid layout shift */}
+      {!loaded && (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-sm text-[var(--text-dim)]">Chargement...</p>
+        </div>
+      )}
+      {loaded && weeks.map((week) => {
         const wkStr = weekKey(week.monday);
         const isCurrentWeek = wkStr === currentMondayStr;
         const weekNum = getWeekNumber(week.monday);

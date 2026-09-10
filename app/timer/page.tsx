@@ -163,14 +163,14 @@ export default function TimerPage() {
               onClick={handleStart}
               className="w-16 h-16 rounded-full bg-[var(--accent)] text-white text-sm font-bold shadow-md active:opacity-90 flex items-center justify-center"
             >
-              {done || (mode === "stopwatch" && elapsed > 0) ? "&#9654;" : "&#9654;"}
+              ▶
             </button>
           ) : (
             <button
               onClick={handlePause}
               className="w-16 h-16 rounded-full bg-[var(--surface)] border-2 border-[var(--accent)] text-[var(--accent)] text-sm font-bold shadow-md active:opacity-90 flex items-center justify-center"
             >
-              &#10074;&#10074;
+              ⏸
             </button>
           )}
           <button
