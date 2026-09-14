@@ -39,6 +39,21 @@ const exerciseInfoMap: Record<string, ExerciseInfo> = {
       "Trop de reps — 3 par série max, c'est coûteux pour le système nerveux",
     ],
   },
+  "FL excentriques advanced tuck": {
+    description: "Même mouvement que les excentriques FL, mais en advanced tuck (jambes pliées, dos horizontal). Régression adaptée quand le full FL excentrique est trop dur. Construit la même force excentrique avec un levier plus court.",
+    cues: [
+      "Partir en position inversée, genoux pliés (advanced tuck)",
+      "Descendre lentement à l'horizontale — viser 3-5 secondes",
+      "Garder le dos horizontal, pas arrondi",
+      "Remonter entre chaque rep",
+      "3 reps max par série",
+    ],
+    mistakes: [
+      "Arrondir le dos — le dos doit rester plat même en tuck",
+      "Déplier les jambes en route — rester en tuck tout du long",
+      "Descendre trop vite — si moins de 3s, c'est trop rapide",
+    ],
+  },
   "FL complet sans assistance": {
     description: "Front lever complet sans élastique. C'est ton exercice de test / drive neural — effort total, forme parfaite, séries limitées. Uniquement les jours d'intensité.",
     cues: [
@@ -235,6 +250,21 @@ const exerciseInfoMap: Record<string, ExerciseInfo> = {
       "Pas de rétroversion du bassin — le bas du dos se cambre = pas bon",
     ],
   },
+  "Dragon flags (négatifs, advanced tuck)": {
+    description: "Négatifs de dragon flags en advanced tuck (jambes pliées). Tu montes en position haute, puis tu descends lentement en gardant le corps aligné. Adapté à ton niveau actuel — les négatifs construisent la force sans avoir besoin de remonter.",
+    cues: [
+      "Monter les jambes pliées à la verticale",
+      "Descendre lentement (3-5s) en gardant le dos plat",
+      "Rétroversion du bassin — serrer les fessiers",
+      "2 séries de 4 reps max — pas plus",
+      "Si la forme se dégrade sur la rep 3-4, c'est normal, contrôle ce que tu peux",
+    ],
+    mistakes: [
+      "Essayer de remonter — ce sont des NÉGATIFS, redescendre et remonter les jambes pour la rep suivante",
+      "Déplier les jambes — rester en advanced tuck",
+      "Faire plus de 2 séries — le gainage en fin de séance est limité par la fatigue",
+    ],
+  },
   "Dragon flags / roue abdominale": {
     description: "Dragon flags ou roue abdominale — les deux travaillent l'anti-extension, la demande #1 du gainage pour le front lever. Choisir celui que tu exécutes avec la meilleure forme ce jour-là.",
     cues: [
@@ -392,6 +422,16 @@ const exerciseInfoMap: Record<string, ExerciseInfo> = {
     description: "Controlled Articular Rotations — cercles lents à amplitude maximale à l'articulation de l'épaule. Cartographie toute l'amplitude de mouvement et échauffe la capsule articulaire.",
     cues: ["Le plus lentement possible", "Amplitude maximale dans chaque direction", "Garder le reste du corps immobile"],
     mistakes: ["Aller vite", "Compenser avec le tronc"],
+  },
+  "Rotations articulaires épaules": {
+    description: "Cercles lents à amplitude maximale à l'articulation de l'épaule. Échauffe la capsule articulaire sur toute son amplitude.",
+    cues: ["Le plus lentement possible", "Amplitude maximale dans chaque direction", "Garder le reste du corps immobile"],
+    mistakes: ["Aller vite", "Compenser avec le tronc"],
+  },
+  "Étirements ischio-jambiers": {
+    description: "Étirements pour améliorer la souplesse des ischio-jambiers. Aide le kick-up HSPU — si les ischios sont raides, tu plies les jambes pour compenser, ce qui réduit l'angle et complique l'équilibre.",
+    cues: ["Toucher les orteils debout, pike stretch assis", "Tenir 30s par position", "Respirer et relâcher progressivement"],
+    mistakes: ["Rebondir — tenir la position statiquement", "Forcer au-delà de la douleur — c'est un étirement, pas un test de flexibilité"],
   },
   "Pike push-ups (échauffement)": {
     description: "Pike push-ups légers pour échauffer le schéma de poussée avant le travail HSPU plus lourd.",
