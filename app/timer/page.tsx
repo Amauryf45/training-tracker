@@ -26,53 +26,63 @@ export default function TimerPage() {
   const [remaining, setRemaining] = useState(150);
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef(0);
+  // Real-time refs — survive background throttling
+  const endTimeRef = useRef(0); // countdown: when it ends
+  const startTimeRef = useRef(0); // stopwatch: when it started
+  const pausedElapsedRef = useRef(0); // stopwatch: elapsed at pause
 
-  const clear = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  }, []);
+  const clear = useCallback(() => {}, []);
 
-  // Countdown logic
+  // Countdown — real-time based
   useEffect(() => {
-    if (!running || mode !== "countdown") { clear(); return; }
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clear();
-          setRunning(false);
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return clear;
-  }, [running, mode, clear]);
+    if (!running || mode !== "countdown") return;
+    endTimeRef.current = Date.now() + remaining * 1000;
 
-  // Stopwatch logic
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+      setRemaining(left);
+      if (left === 0) {
+        setRunning(false);
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, mode]);
+
+  // Stopwatch — real-time based
   useEffect(() => {
-    if (!running || mode !== "stopwatch") { clear(); return; }
-    startTimeRef.current = Date.now() - elapsed * 1000;
-    intervalRef.current = setInterval(() => {
+    if (!running || mode !== "stopwatch") return;
+    startTimeRef.current = Date.now() - pausedElapsedRef.current * 1000;
+
+    const tick = () => {
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 100);
-    return clear;
-  }, [running, mode, clear, elapsed]);
+    };
+
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, mode]);
 
   const handleStart = () => {
     if (mode === "countdown" && remaining === 0) setRemaining(duration);
+    if (mode === "stopwatch") pausedElapsedRef.current = elapsed;
     setRunning(true);
   };
 
-  const handlePause = () => setRunning(false);
+  const handlePause = () => {
+    setRunning(false);
+    if (mode === "stopwatch") pausedElapsedRef.current = elapsed;
+  };
 
   const handleReset = () => {
-    clear();
     setRunning(false);
     if (mode === "countdown") setRemaining(duration);
-    else setElapsed(0);
+    else { setElapsed(0); pausedElapsedRef.current = 0; }
   };
 
   const selectPreset = (seconds: number) => {

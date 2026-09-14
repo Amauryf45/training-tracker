@@ -66,25 +66,29 @@ function ExerciseInfoModal({ info, name, onClose }: { info: ExerciseInfo; name: 
   );
 }
 
-/* ─── Rest Timer ─── */
+/* ─── Rest Timer (real-time based, survives background) ─── */
 function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; exerciseName: string; onDismiss: () => void }) {
+  const endTimeRef = useRef(Date.now() + duration * 1000);
   const [remaining, setRemaining] = useState(duration);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [vibrated, setVibrated] = useState(false);
 
   useEffect(() => {
-    setRemaining(duration);
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [duration]);
+    endTimeRef.current = Date.now() + duration * 1000;
+    setVibrated(false);
+
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+      setRemaining(left);
+      if (left === 0 && !vibrated) {
+        setVibrated(true);
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+    };
+
+    tick(); // immediate first tick
+    const id = setInterval(tick, 250); // 250ms for snappy updates after returning from background
+    return () => clearInterval(id);
+  }, [duration, vibrated]);
 
   const progress = duration > 0 ? (duration - remaining) / duration : 0;
   const done = remaining === 0;
@@ -113,18 +117,17 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
   );
 }
 
-/* ─── Hold Timer ─── */
+/* ─── Hold Timer (real-time based) ─── */
 function HoldTimer({ onStop }: { onStop: (seconds: number) => void }) {
-  const [elapsed, setElapsed] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(Date.now());
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     startRef.current = Date.now();
-    intervalRef.current = setInterval(() => {
+    const id = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
     }, 100);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => clearInterval(id);
   }, []);
 
   return (
@@ -323,6 +326,34 @@ interface SessionDraft {
   sessionRpe: number;
 }
 
+/* ─── Wake Lock (keep screen on during training) ─── */
+function useWakeLock(active: boolean) {
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  useEffect(() => {
+    if (!active || !("wakeLock" in navigator)) return;
+
+    const request = async () => {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+      } catch {}
+    };
+
+    request();
+
+    // Re-acquire on visibility change (returning from background)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && active) request();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      wakeLockRef.current?.release().catch(() => {});
+    };
+  }, [active]);
+}
+
 /* ─── Session Page ─── */
 function SessionContent() {
   const searchParams = useSearchParams();
@@ -339,6 +370,9 @@ function SessionContent() {
   const [sessionStarted, setSessionStarted] = useState(() => new Date().toISOString());
   const [sessionNotes, setSessionNotes] = useState("");
   const [sessionRpe, setSessionRpe] = useState(0);
+
+  // Keep screen on during active training (not view mode)
+  useWakeLock(mode !== "view" && !saved);
   const [existingSessionId, setExistingSessionId] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);
