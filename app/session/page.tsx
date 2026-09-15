@@ -5,6 +5,7 @@ import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { currentRoutine } from "@/lib/routine";
 import { ExerciseDef, SetLog, ExerciseLog, SessionLog } from "@/lib/types";
 import { getExerciseInfo, ExerciseInfo } from "@/lib/exercise-info";
+import { useKeepAlive } from "@/app/components/use-keep-alive";
 
 const borderColors: Record<string, string> = {
   fl: "border-l-[var(--green)]",
@@ -371,8 +372,10 @@ function SessionContent() {
   const [sessionNotes, setSessionNotes] = useState("");
   const [sessionRpe, setSessionRpe] = useState(0);
 
-  // Keep screen on during active training (not view mode)
-  useWakeLock(mode !== "view" && !saved);
+  // Keep screen on + prevent iOS timer suspension during active training
+  const isActiveSession = mode !== "view" && !saved;
+  useWakeLock(isActiveSession);
+  useKeepAlive(isActiveSession);
   const [existingSessionId, setExistingSessionId] = useState<string | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);

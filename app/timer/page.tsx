@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useKeepAlive } from "@/app/components/use-keep-alive";
 
 const presets = [
   { label: "30s", seconds: 30 },
@@ -26,6 +27,9 @@ export default function TimerPage() {
   const [remaining, setRemaining] = useState(150);
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
+
+  // Keep iOS tab alive while timer is running
+  useKeepAlive(running);
   // Real-time refs — survive background throttling
   const endTimeRef = useRef(0); // countdown: when it ends
   const startTimeRef = useRef(0); // stopwatch: when it started
