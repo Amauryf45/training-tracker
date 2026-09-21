@@ -71,25 +71,24 @@ function ExerciseInfoModal({ info, name, onClose }: { info: ExerciseInfo; name: 
 function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; exerciseName: string; onDismiss: () => void }) {
   const endTimeRef = useRef(Date.now() + duration * 1000);
   const [remaining, setRemaining] = useState(duration);
-  const [vibrated, setVibrated] = useState(false);
+  const vibratedRef = useRef(false);
+
+  const tick = useCallback(() => {
+    const left = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+    setRemaining(left);
+    if (left === 0 && !vibratedRef.current) {
+      vibratedRef.current = true;
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    }
+  }, []);
 
   useEffect(() => {
     endTimeRef.current = Date.now() + duration * 1000;
-    setVibrated(false);
-
-    const tick = () => {
-      const left = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
-      setRemaining(left);
-      if (left === 0 && !vibrated) {
-        setVibrated(true);
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      }
-    };
-
-    tick(); // immediate first tick
-    const id = setInterval(tick, 250); // 250ms for snappy updates after returning from background
+    vibratedRef.current = false;
+    tick();
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [duration, vibrated]);
+  }, [duration, tick]);
 
   const progress = duration > 0 ? (duration - remaining) / duration : 0;
   const done = remaining === 0;
@@ -97,7 +96,7 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[var(--border)] shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
       <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-        <div className="relative w-11 h-11 shrink-0">
+        <button onClick={tick} className="relative w-11 h-11 shrink-0 active:opacity-70">
           <svg viewBox="0 0 36 36" className="w-11 h-11 -rotate-90">
             <circle cx="18" cy="18" r="15" fill="none" stroke="var(--border)" strokeWidth="3" />
             <circle cx="18" cy="18" r="15" fill="none" stroke={done ? "var(--green)" : "var(--accent)"} strokeWidth="3" strokeDasharray={`${progress * 94.25} 94.25`} strokeLinecap="round" />
@@ -105,7 +104,7 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
           <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${done ? "text-[var(--green)]" : "text-[var(--accent)]"}`}>
             {done ? "GO" : formatTime(remaining)}
           </span>
-        </div>
+        </button>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Repos terminé !" : "Repos"}</div>
           <div className="text-xs text-[var(--text-dim)] truncate">{exerciseName} · {formatTime(duration)}</div>
@@ -438,9 +437,9 @@ function SessionContent() {
           // Rebuild exercise logs from saved session
           const logs = initEmptyLogs();
           for (const ex of existing.exercises) {
-            if (logs[ex.exerciseId]) {
-              logs[ex.exerciseId] = ex;
-            }
+            // Always include saved data, even if the exercise ID no longer
+            // exists in the current routine (routine may have changed since)
+            logs[ex.exerciseId] = ex;
           }
           setExerciseLogs(logs);
           setSessionNotes(existing.notes || "");
@@ -554,6 +553,33 @@ function SessionContent() {
           ))}
         </div>
       ))}
+
+      {/* Orphaned exercises (saved but no longer in current routine) — view mode only */}
+      {readOnly && (() => {
+        const routineIds = new Set(day.sections.flatMap((s) => s.exercises.map((e) => e.id)));
+        const orphans = Object.values(exerciseLogs).filter((l) => !routineIds.has(l.exerciseId) && l.sets.length > 0);
+        if (orphans.length === 0) return null;
+        return (
+          <div className="mb-6">
+            <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-widest mb-2">Autres exercices (routine précédente)</h2>
+            {orphans.map((log) => (
+              <div key={log.exerciseId} className="bg-white border border-[var(--border)] border-l-[3px] border-l-[var(--text-dim)] rounded-xl p-3 mb-2 shadow-sm">
+                <div className="font-semibold text-sm text-[var(--foreground)]">{log.exerciseName}</div>
+                <div className="mt-2 space-y-1">
+                  {log.sets.map((set, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1">
+                      <span className="text-xs text-[var(--text-dim)] w-6 shrink-0 font-medium">#{i + 1}</span>
+                      <span className="text-sm font-semibold">{set.value}{log.tag === "fl" || log.tag === "flag" ? "s" : " reps"}</span>
+                      {set.weight > 0 && <span className="text-sm text-[var(--text-dim)]">+{set.weight}kg</span>}
+                      {set.rpe > 0 && <span className="text-xs text-[var(--text-dim)]">@RPE {set.rpe}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Session wrap-up */}
       <div className="border border-[var(--border)] rounded-2xl p-4 bg-white shadow-sm mt-6">
