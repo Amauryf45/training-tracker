@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { currentRoutine } from "@/lib/routine";
-import { ExerciseDef, SetLog, ExerciseLog, SessionLog } from "@/lib/types";
+import { DayRoutine, ExerciseDef, SetLog, ExerciseLog, SessionLog } from "@/lib/types";
 import { getExerciseInfo, ExerciseInfo } from "@/lib/exercise-info";
 import { useKeepAlive } from "@/app/components/use-keep-alive";
 
@@ -108,6 +108,7 @@ function RestTimer({ duration, exerciseName, onDismiss }: { duration: number; ex
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-[var(--foreground)]">{done ? "Repos terminé !" : "Repos"}</div>
           <div className="text-xs text-[var(--text-dim)] truncate">{exerciseName} · {formatTime(duration)}</div>
+          {!done && <div className="text-[10px] text-[var(--text-dim)] opacity-60 mt-0.5">Tap chrono pour resync</div>}
         </div>
         <button onClick={onDismiss} className={`px-4 py-2 rounded-xl text-xs font-bold ${done ? "bg-[var(--green)] text-white" : "bg-[var(--surface2)] text-[var(--text-dim)]"}`}>
           {done ? "OK" : "Passer"}
@@ -319,6 +320,33 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer, readOnly }: {
 /* ─── LocalStorage draft ─── */
 function getDraftKey(dayId: string, dateStr: string) { return `draft-${dayId}-${dateStr}`; }
 
+function buildFallbackDay(dayId: string, session: SessionLog): DayRoutine {
+  const sections: DayRoutine["sections"] = [];
+  let currentTag: string | null = null;
+  let currentExercises: ExerciseDef[] = [];
+
+  for (const ex of session.exercises) {
+    if (ex.tag !== currentTag) {
+      if (currentExercises.length > 0) {
+        sections.push({ title: sectionTitle(currentTag!), tag: currentTag as ExerciseDef["tag"], exercises: currentExercises });
+      }
+      currentTag = ex.tag;
+      currentExercises = [];
+    }
+    currentExercises.push({ id: ex.exerciseId, name: ex.exerciseName, tag: ex.tag, prescription: "", rest: "", type: ex.tag === "fl" || ex.tag === "flag" ? "hold" : "reps" });
+  }
+  if (currentExercises.length > 0 && currentTag) {
+    sections.push({ title: sectionTitle(currentTag), tag: currentTag as ExerciseDef["tag"], exercises: currentExercises });
+  }
+
+  return { id: dayId, label: session.dayLabel, focus: "", tags: [], sections };
+}
+
+function sectionTitle(tag: string): string {
+  const map: Record<string, string> = { fl: "Front Lever", hspu: "HSPU", flag: "Human Flag", prehab: "Échauffement", acc: "Accessoires", core: "Core" };
+  return map[tag] || tag;
+}
+
 interface SessionDraft {
   sessionStarted: string;
   exerciseLogs: Record<string, ExerciseLog>;
@@ -361,9 +389,10 @@ function SessionContent() {
   const dayId = searchParams.get("day") || "";
   const dateStr = searchParams.get("date") || new Date().toISOString().split("T")[0];
   const isViewMode = searchParams.get("view") === "true";
-  const day = currentRoutine.days.find((d) => d.id === dayId);
-
   const [mode, setMode] = useState<"view" | "edit" | "new">(isViewMode ? "view" : "new");
+  const routineDay = currentRoutine.days.find((d) => d.id === dayId);
+  const [savedDay, setSavedDay] = useState<DayRoutine | null>(null);
+  const day = (mode === "view" && savedDay) ? savedDay : routineDay;
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loadedRemote, setLoadedRemote] = useState(false);
@@ -434,11 +463,18 @@ function SessionContent() {
           return sDate === dateStr && s.dayType === dayId;
         });
         if (existing) {
-          // Rebuild exercise logs from saved session
-          const logs = initEmptyLogs();
+          const savedRoutine = existing.dayRoutine || (isViewMode ? buildFallbackDay(dayId, existing) : null);
+          const logs: Record<string, ExerciseLog> = {};
+          if (savedRoutine && isViewMode) {
+            for (const section of savedRoutine.sections) {
+              for (const ex of section.exercises) {
+                logs[ex.id] = { exerciseId: ex.id, exerciseName: ex.name, tag: ex.tag, sets: [] };
+              }
+            }
+          } else {
+            Object.assign(logs, initEmptyLogs());
+          }
           for (const ex of existing.exercises) {
-            // Always include saved data, even if the exercise ID no longer
-            // exists in the current routine (routine may have changed since)
             logs[ex.exerciseId] = ex;
           }
           setExerciseLogs(logs);
@@ -446,6 +482,7 @@ function SessionContent() {
           setSessionRpe(existing.sessionRpe || 0);
           setSessionStarted(existing.startedAt);
           setExistingSessionId(existing.id);
+          if (savedRoutine) setSavedDay(savedRoutine);
           setMode(isViewMode ? "view" : "new");
         }
         setLoadedRemote(true);
@@ -478,6 +515,7 @@ function SessionContent() {
       exercises: Object.values(exerciseLogs).filter((l) => l.sets.length > 0),
       notes: sessionNotes || undefined,
       sessionRpe: sessionRpe || undefined,
+      dayRoutine: day,
     };
     try {
       const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
@@ -547,10 +585,13 @@ function SessionContent() {
       {day.sections.map((section) => (
         <div key={section.title} className="mb-6">
           <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-widest mb-2">{section.title}</h2>
-          {section.exercises.map((ex) => (
-            <ExerciseCard key={ex.id} exercise={ex} log={exerciseLogs[ex.id]}
-              onLogUpdate={(log) => updateExerciseLog(ex.id, log)} onStartTimer={startTimer} readOnly={readOnly} />
-          ))}
+          {section.exercises.map((ex) => {
+            const log = exerciseLogs[ex.id] || { exerciseId: ex.id, exerciseName: ex.name, tag: ex.tag, sets: [] };
+            return (
+              <ExerciseCard key={ex.id} exercise={ex} log={log}
+                onLogUpdate={(l) => updateExerciseLog(ex.id, l)} onStartTimer={startTimer} readOnly={readOnly} />
+            );
+          })}
         </div>
       ))}
 

@@ -42,6 +42,8 @@ export interface SessionLog {
   notes?: string;
   /** Overall session RPE */
   sessionRpe?: number;
+  /** Snapshot of the day routine at save time (for stable past-session display) */
+  dayRoutine?: DayRoutine;
 }
 
 export interface DayRoutine {
