@@ -1,10 +1,10 @@
 import { Routine } from "./types";
 
 export const currentRoutine: Routine = {
-  version: 3,
+  version: 4,
   updatedAt: new Date().toISOString(),
   mesocycle: 1,
-  week: 3,
+  week: 4,
   days: [
     {
       id: "day1",
@@ -115,8 +115,8 @@ export const currentRoutine: Routine = {
           tag: "fl",
           exercises: [
             { id: "d4-fl-1", name: "FL complet sans assistance", tag: "fl", prescription: "3 × max (2-4s)", rest: "3 min", note: "Effort max, forme parfaite. Lâcher dès que les hanches tombent.", type: "hold" },
-            { id: "d4-fl-2", name: "FL assisté élastique (bande légère)", tag: "fl", prescription: "3 × 8-10s", rest: "2.5 min", note: "Même bande légère. RPE en baisse en S2, on pousse le temps. Cible RPE 7-8.", type: "hold" },
-            { id: "d4-fl-3", name: "FL raises (suspension → FL → retour)", tag: "fl", prescription: "3 × 5-6", rest: "2.5 min", note: "Tu as fait 5,4,5 en S2. Cible 5-6 reps propres bras tendus.", type: "reps" },
+            { id: "d4-fl-2", name: "FL assisté élastique (bande légère)", tag: "fl", prescription: "3 × 10-12s", rest: "2.5 min", note: "9s×3 en S3. On pousse vers 10-12s. Cible RPE 7-8.", type: "hold" },
+            { id: "d4-fl-3", name: "FL raises (suspension → FL → retour)", tag: "fl", prescription: "3 × 6", rest: "2.5 min", note: "5,6,6 en S3. Cible 6 reps propres bras tendus.", type: "reps" },
           ],
         },
         {
