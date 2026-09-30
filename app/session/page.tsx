@@ -317,8 +317,26 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer, readOnly }: {
   );
 }
 
+/* ─── Date helpers ─── */
+function getMonday(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getMondayStr(dateStr: string): string {
+  return toLocalDateStr(getMonday(new Date(dateStr + "T12:00:00")));
+}
+
 /* ─── LocalStorage draft ─── */
-function getDraftKey(dayId: string, dateStr: string) { return `draft-${dayId}-${dateStr}`; }
+function getDraftKey(dayId: string, dateStr: string) { return `draft-${dayId}-${getMondayStr(dateStr)}`; }
 
 function buildFallbackDay(dayId: string, session: SessionLog): DayRoutine {
   const sections: DayRoutine["sections"] = [];
@@ -440,7 +458,7 @@ function SessionContent() {
       if (draftRaw && !isViewMode) {
         const draft: SessionDraft = JSON.parse(draftRaw);
         const age = Date.now() - new Date(draft.sessionStarted).getTime();
-        if (age < 12 * 60 * 60 * 1000) {
+        if (age < 7 * 24 * 60 * 60 * 1000) {
           setExerciseLogs(draft.exerciseLogs);
           setSessionNotes(draft.sessionNotes);
           setSessionRpe(draft.sessionRpe);
@@ -457,10 +475,12 @@ function SessionContent() {
       .then((r) => r.json())
       .then((data) => {
         const list: SessionLog[] = Array.isArray(data) ? data : [];
+        const targetMonday = getMondayStr(dateStr);
         const existing = list.find((s) => {
-          const sd = new Date(s.startedAt);
-          const sDate = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, "0")}-${String(sd.getDate()).padStart(2, "0")}`;
-          return sDate === dateStr && s.dayType === dayId;
+          if (s.dayType !== dayId) return false;
+          if (s.date) return s.date === dateStr;
+          const sMon = toLocalDateStr(getMonday(new Date(s.startedAt)));
+          return sMon === targetMonday;
         });
         if (existing) {
           const savedRoutine = existing.dayRoutine || (isViewMode ? buildFallbackDay(dayId, existing) : null);
@@ -510,6 +530,7 @@ function SessionContent() {
       id: existingSessionId || `${dayId}-${Date.now()}`,
       dayType: dayId,
       dayLabel: day.label,
+      date: dateStr,
       startedAt: sessionStarted,
       completedAt: new Date().toISOString(),
       exercises: Object.values(exerciseLogs).filter((l) => l.sets.length > 0),

@@ -185,9 +185,12 @@ function WeekBlock({ week, sessions, weekNum }: { week: WeekData; sessions: Sess
 
           if (routineDay) {
             const dateStr = toLocalDateStr(date);
+            const mondayStr = toLocalDateStr(week.monday);
             const session = sessions.find((s) => {
-              const sDate = toLocalDateStr(new Date(s.startedAt));
-              return sDate === dateStr && s.dayType === routineDay.id;
+              if (s.dayType !== routineDay.id) return false;
+              if (s.date) return s.date === dateStr;
+              const sMon = toLocalDateStr(getMonday(new Date(s.startedAt)));
+              return sMon === mondayStr;
             });
             return <TrainingDayCard key={dow} date={date} routineDay={routineDay} session={session} />;
           }

@@ -35,6 +35,8 @@ export interface SessionLog {
   /** e.g. "day1", "day2", "day4", "day5" */
   dayType: string;
   dayLabel: string;
+  /** Calendar date this session belongs to (YYYY-MM-DD) */
+  date?: string;
   startedAt: string;
   completedAt?: string;
   exercises: ExerciseLog[];
