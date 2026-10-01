@@ -86,8 +86,8 @@ export const currentRoutine: Routine = {
           title: "Accessoires",
           tag: "acc",
           exercises: [
-            { id: "d2-acc-0", name: "Équilibre libre (maintien)", tag: "acc", prescription: "3 × max", rest: "90s", note: "Placé ici (avant les dips) pour être plus frais. Rester gainé au point d'équilibre.", type: "hold" },
             { id: "d2-acc-1", name: "Dips lestés", tag: "acc", prescription: "3 × 6-8", rest: "2.5 min", note: "Cible 35-40kg. Avec ceinture si dispo, sinon poids entre jambes.", type: "reps" },
+            { id: "d2-acc-0", name: "Équilibre libre (maintien)", tag: "acc", prescription: "3 × max", rest: "90s", note: "Après les dips pour reposer la position handstand. Rester gainé au point d'équilibre.", type: "hold" },
             { id: "d2-acc-2", name: "Pike push-ups (pieds surélevés, déficit)", tag: "acc", prescription: "3 × 8-10", rest: "90s", type: "reps" },
             { id: "d2-acc-3", name: "Face pulls / élévations inversées", tag: "acc", prescription: "3 × 12-15", rest: "60s", note: "Poids léger. Si pas de poids léger, élastique léger.", type: "reps" },
           ],
@@ -174,8 +174,8 @@ export const currentRoutine: Routine = {
           title: "Accessoires",
           tag: "acc",
           exercises: [
-            { id: "d5-acc-0", name: "Équilibre libre (maintien)", tag: "acc", prescription: "3 × max", rest: "90s", note: "Déplacé ici pour être plus frais. Rester gainé, pas de cambrure.", type: "hold" },
             { id: "d5-acc-1", name: "Dips lestés (lourd)", tag: "acc", prescription: "4 × 4-6", rest: "3 min", note: "Cible 50kg. Bonne charge trouvée en S2.", type: "reps" },
+            { id: "d5-acc-0", name: "Équilibre libre (maintien)", tag: "acc", prescription: "3 × max", rest: "90s", note: "Après les dips pour reposer la position handstand. Rester gainé, pas de cambrure.", type: "hold" },
             { id: "d5-acc-2", name: "Élévations latérales", tag: "acc", prescription: "3 × 12-15", rest: "60s", note: "Utilise ce que tu as. Même des bouteilles d'eau.", type: "reps" },
           ],
         },
