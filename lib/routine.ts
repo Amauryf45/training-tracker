@@ -7,8 +7,24 @@ export const currentRoutine: Routine = {
   week: 5,
   days: [
     {
+      id: "day1",
+      label: "Jour 1 — Deload Tirage (Repos)",
+      focus: "Deload — repos ou mobilité légère",
+      tags: ["fl"],
+      sections: [
+        {
+          title: "Mobilité (optionnel)",
+          tag: "prehab",
+          exercises: [
+            { id: "d5w-d1-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Optionnel. Rotations douces, chin tucks, extensions thoraciques.", type: "time" },
+            { id: "d5w-d1-2", name: "Étirements épaules + dos", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
+          ],
+        },
+      ],
+    },
+    {
       id: "day2",
-      label: "Jour 1 — Deload Test (FL + HSPU)",
+      label: "Jour 2 — Deload Test (FL + HSPU)",
       focus: "Tests max FL & HSPU + mobilité",
       tags: ["fl", "hspu"],
       sections: [
@@ -46,6 +62,38 @@ export const currentRoutine: Routine = {
             { id: "d5w-acc-1", name: "Équilibre libre (maintien)", tag: "acc", prescription: "3 × max", rest: "90s", note: "Tranquille. Focus sur le point d'équilibre.", type: "hold" },
             { id: "d5w-acc-2", name: "Dips (léger, pas lesté)", tag: "acc", prescription: "2 × 6", rest: "2 min", note: "Bodyweight seulement. Juste pour bouger.", type: "reps" },
             { id: "d5w-acc-3", name: "Pike push-ups (pieds surélevés)", tag: "acc", prescription: "2 × 8", rest: "90s", type: "reps" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "day4",
+      label: "Jour 4 — Deload Tirage (Repos)",
+      focus: "Deload — repos ou mobilité légère",
+      tags: ["fl"],
+      sections: [
+        {
+          title: "Mobilité (optionnel)",
+          tag: "prehab",
+          exercises: [
+            { id: "d5w-d4-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Optionnel. Rotations douces, chin tucks, extensions thoraciques.", type: "time" },
+            { id: "d5w-d4-2", name: "Étirements épaules + dos", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "day5",
+      label: "Jour 5 — Deload Poussée (Repos)",
+      focus: "Deload — repos ou mobilité légère",
+      tags: ["hspu"],
+      sections: [
+        {
+          title: "Mobilité (optionnel)",
+          tag: "prehab",
+          exercises: [
+            { id: "d5w-d5-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Optionnel. Rotations douces, chin tucks, extensions thoraciques.", type: "time" },
+            { id: "d5w-d5-2", name: "Échauffement poignets", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
           ],
         },
       ],
