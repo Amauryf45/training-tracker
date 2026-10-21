@@ -477,8 +477,8 @@ function SessionContent() {
         const list: SessionLog[] = Array.isArray(data) ? data : [];
         const targetMonday = getMondayStr(dateStr);
         const existing = list.find((s) => {
-          if (s.dayType !== dayId) return false;
           if (s.date) return s.date === dateStr;
+          if (s.dayType !== dayId) return false;
           const sMon = toLocalDateStr(getMonday(new Date(s.startedAt)));
           return sMon === targetMonday;
         });

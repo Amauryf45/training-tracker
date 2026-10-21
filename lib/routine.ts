@@ -1,99 +1,82 @@
 import { Routine } from "./types";
 
 export const currentRoutine: Routine = {
-  version: 5,
+  version: 6,
   updatedAt: new Date().toISOString(),
-  mesocycle: 1,
-  week: 5,
+  mesocycle: 2,
+  week: 0,
   days: [
     {
-      id: "day1",
-      label: "Jour 1 — Deload Tirage (Repos)",
-      focus: "Deload — repos ou mobilité légère",
-      tags: ["fl"],
+      id: "force",
+      label: "Force lestée",
+      focus: "Tractions + Dips lestés — progression linéaire",
+      tags: ["acc"],
       sections: [
         {
-          title: "Mobilité (optionnel)",
+          title: "Échauffement",
           tag: "prehab",
           exercises: [
-            { id: "d5w-d1-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Optionnel. Rotations douces, chin tucks, extensions thoraciques.", type: "time" },
-            { id: "d5w-d1-2", name: "Étirements épaules + dos", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
+            { id: "f-warmup-1", name: "Mobilité cervicale (rotations, chin tucks)", tag: "prehab", prescription: "2 min", rest: "", note: "Nuque pas 100%, prendre le temps.", type: "time" },
+            { id: "f-warmup-2", name: "Dislocations épaules", tag: "prehab", prescription: "2 × 12", rest: "", type: "reps" },
+            { id: "f-warmup-3", name: "Tractions scapulaires", tag: "prehab", prescription: "2 × 8", rest: "", type: "reps" },
+            { id: "f-warmup-4", name: "Tractions bodyweight (échauffement)", tag: "prehab", prescription: "1 × 5", rest: "", type: "reps" },
+            { id: "f-warmup-5", name: "Dips bodyweight (échauffement)", tag: "prehab", prescription: "1 × 8", rest: "", type: "reps" },
+          ],
+        },
+        {
+          title: "Tractions lestées",
+          tag: "acc",
+          exercises: [
+            { id: "f-pull-1", name: "Tractions lestées", tag: "acc", prescription: "4 × 3-5", rest: "3 min", note: "Si 4 reps à la 4ème série → +1 kg prochaine séance. Descente contrôlée 2s.", type: "reps" },
+          ],
+        },
+        {
+          title: "Dips lestés",
+          tag: "acc",
+          exercises: [
+            { id: "f-push-1", name: "Dips lestés", tag: "acc", prescription: "4 × 3-5", rest: "3 min", note: "Si 4 reps à la 4ème série → +1 kg prochaine séance. Amplitude complète.", type: "reps" },
+          ],
+        },
+        {
+          title: "Finisher (10-15 min)",
+          tag: "acc",
+          exercises: [
+            { id: "f-fin-1", name: "Rowing (haltère ou barre)", tag: "acc", prescription: "2 × 8-10", rest: "90s", note: "Élastique un bras si pas de poids.", type: "reps" },
+            { id: "f-fin-2", name: "Pike push-ups (pieds surélevés)", tag: "acc", prescription: "2 × 8-10", rest: "90s", type: "reps" },
+            { id: "f-fin-3", name: "Face pulls / élévations inversées", tag: "acc", prescription: "2 × 12-15", rest: "60s", note: "Poids léger. Santé des épaules.", type: "reps" },
           ],
         },
       ],
     },
     {
-      id: "day2",
-      label: "Jour 2 — Deload Test (FL + HSPU)",
-      focus: "Tests max FL & HSPU + mobilité",
+      id: "bonus",
+      label: "Bonus — Skill & Mobilité",
+      focus: "Maintien FL/HSPU + mobilité — selon la motiv",
       tags: ["fl", "hspu"],
       sections: [
         {
-          title: "Échauffement + Mobilité",
+          title: "Mobilité (10 min)",
           tag: "prehab",
           exercises: [
-            { id: "d5w-warmup-1", name: "Mobilité cervicale (rotations, chin tucks)", tag: "prehab", prescription: "3 min", rest: "", note: "Doucement. Si douleur, rester sur les mouvements indolores.", type: "time" },
-            { id: "d5w-warmup-2", name: "Mobilité thoracique (rotations, extensions)", tag: "prehab", prescription: "3 min", rest: "", note: "Ouvrir la cage thoracique. Foam roller si dispo.", type: "time" },
-            { id: "d5w-warmup-3", name: "Échauffement poignets", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
-            { id: "d5w-warmup-4", name: "Dislocations épaules", tag: "prehab", prescription: "2 × 12", rest: "", type: "reps" },
-            { id: "d5w-warmup-5", name: "Tractions scapulaires", tag: "prehab", prescription: "2 × 8", rest: "", type: "reps" },
-            { id: "d5w-warmup-6", name: "Pike push-ups (léger)", tag: "prehab", prescription: "2 × 5", rest: "", type: "reps" },
-            { id: "d5w-warmup-7", name: "Équilibre au mur", tag: "prehab", prescription: "2 × 20s", rest: "", type: "hold" },
+            { id: "b-mob-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Rotations, chin tucks, extensions thoraciques. Foam roller si dispo.", type: "time" },
+            { id: "b-mob-2", name: "Étirements épaules (german hang, skin the cat)", tag: "prehab", prescription: "3 min", rest: "", note: "Doucement, amplitude progressive.", type: "time" },
+            { id: "b-mob-3", name: "Échauffement poignets", tag: "prehab", prescription: "2 min", rest: "", type: "time" },
           ],
         },
         {
-          title: "Test — Front Lever",
+          title: "Front Lever — Maintien",
           tag: "fl",
           exercises: [
-            { id: "d5w-fl-1", name: "FL complet sans assistance (TEST MAX)", tag: "fl", prescription: "3 × max", rest: "3-4 min", note: "3 tentatives, repos complet entre chaque. Lâche dès que les hanches tombent. Record le meilleur temps.", type: "hold" },
+            { id: "b-fl-1", name: "FL complet sans assistance", tag: "fl", prescription: "3 × max", rest: "3 min", note: "Pas de record, juste maintenir le pattern. Lâche proprement.", type: "hold" },
+            { id: "b-fl-2", name: "FL assisté élastique épais", tag: "fl", prescription: "2 × 10s", rest: "2 min", note: "Facile. Omoplates rétractées, corps droit.", type: "hold" },
           ],
         },
         {
-          title: "Test — HSPU",
+          title: "HSPU — Maintien",
           tag: "hspu",
           exercises: [
-            { id: "d5w-hspu-1", name: "HSPU libres (TEST MAX reps)", tag: "hspu", prescription: "5 × 1-2 reps", rest: "2 min", note: "5 tentatives singles. Compte combien passent proprement (descente ET remontée contrôlées).", type: "reps" },
-          ],
-        },
-        {
-          title: "Équilibre + Accessoires light",
-          tag: "acc",
-          exercises: [
-            { id: "d5w-acc-1", name: "Équilibre libre (maintien)", tag: "acc", prescription: "3 × max", rest: "90s", note: "Tranquille. Focus sur le point d'équilibre.", type: "hold" },
-            { id: "d5w-acc-2", name: "Dips (léger, pas lesté)", tag: "acc", prescription: "2 × 6", rest: "2 min", note: "Bodyweight seulement. Juste pour bouger.", type: "reps" },
-            { id: "d5w-acc-3", name: "Pike push-ups (pieds surélevés)", tag: "acc", prescription: "2 × 8", rest: "90s", type: "reps" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "day4",
-      label: "Jour 4 — Deload Tirage (Repos)",
-      focus: "Deload — repos ou mobilité légère",
-      tags: ["fl"],
-      sections: [
-        {
-          title: "Mobilité (optionnel)",
-          tag: "prehab",
-          exercises: [
-            { id: "d5w-d4-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Optionnel. Rotations douces, chin tucks, extensions thoraciques.", type: "time" },
-            { id: "d5w-d4-2", name: "Étirements épaules + dos", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "day5",
-      label: "Jour 5 — Deload Poussée (Repos)",
-      focus: "Deload — repos ou mobilité légère",
-      tags: ["hspu"],
-      sections: [
-        {
-          title: "Mobilité (optionnel)",
-          tag: "prehab",
-          exercises: [
-            { id: "d5w-d5-1", name: "Mobilité cervicale + thoracique", tag: "prehab", prescription: "5 min", rest: "", note: "Optionnel. Rotations douces, chin tucks, extensions thoraciques.", type: "time" },
-            { id: "d5w-d5-2", name: "Échauffement poignets", tag: "prehab", prescription: "5 min", rest: "", type: "time" },
+            { id: "b-hspu-1", name: "HSPU libres (tentatives)", tag: "hspu", prescription: "5 × 1", rest: "2 min", note: "Retrouver le groove. Kick-up propre, descente contrôlée.", type: "reps" },
+            { id: "b-hspu-2", name: "Équilibre libre", tag: "hspu", prescription: "3 × max", rest: "90s", note: "Tranquille, travail de balance.", type: "hold" },
           ],
         },
       ],

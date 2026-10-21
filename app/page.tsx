@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { currentRoutine } from "@/lib/routine";
-import { SessionLog } from "@/lib/types";
+import { SessionLog, DayRoutine } from "@/lib/types";
 
 const tagColors: Record<string, string> = {
   fl: "bg-[var(--green-bg)] text-[var(--green)]",
@@ -11,10 +11,39 @@ const tagColors: Record<string, string> = {
   flag: "bg-[var(--orange-bg)] text-[var(--orange)]",
 };
 
-const dayOfWeekToRoutine: Record<number, string> = { 1: "day1", 2: "day2", 4: "day4", 5: "day5" };
+// Block 1 calendar stubs (for rendering past weeks — sessions have their own snapshots)
+const block1Stubs: DayRoutine[] = [
+  { id: "day1", label: "Jour 1 — Tirage + Flag (Volume)", focus: "Front lever volume + Human flag", tags: ["fl", "flag"], sections: [] },
+  { id: "day2", label: "Jour 2 — Poussée + Équilibre (Volume)", focus: "HSPU volume + équilibre", tags: ["hspu"], sections: [] },
+  { id: "day4", label: "Jour 4 — Tirage + Flag (Intensité)", focus: "Front lever intensité + Human flag", tags: ["fl", "flag"], sections: [] },
+  { id: "day5", label: "Jour 5 — Poussée (Intensité)", focus: "HSPU intensité + force", tags: ["hspu"], sections: [] },
+];
+
+function findRoutineDay(id: string, mondayStr: string): DayRoutine | undefined {
+  const found = currentRoutine.days.find((d) => d.id === id);
+  if (found) return found;
+  if (mondayStr < FORCE_BLOCK_START) return block1Stubs.find((d) => d.id === id);
+  return undefined;
+}
+
+// Block 1 (S1–S5): fixed 4-day split
+const block1DayMap: Record<number, string> = { 1: "day1", 2: "day2", 4: "day4", 5: "day5" };
+const block1RestLabels: Record<number, string> = { 0: "Course", 3: "Course", 6: "Repos" };
+// Force block (22 oct → 12 nov): any weekday
+const forceDayMap: Record<number, string> = { 1: "force", 2: "force", 3: "force", 4: "force", 5: "force" };
+const forceRestLabels: Record<number, string> = { 0: "Course", 6: "Repos" };
+// Cutover: force block starts week of 20 oct (monday)
+const FORCE_BLOCK_START = "2026-10-20";
+
+function getDayMap(mondayStr: string): Record<number, string> {
+  return mondayStr >= FORCE_BLOCK_START ? forceDayMap : block1DayMap;
+}
+function getRestLabels(mondayStr: string): Record<number, string> {
+  return mondayStr >= FORCE_BLOCK_START ? forceRestLabels : block1RestLabels;
+}
+
 const frenchDayNames = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 const frenchMonths = ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
-const restDayLabels: Record<number, string> = { 0: "Course", 3: "Course", 6: "Repos" };
 
 // Program start date — no weeks shown before this
 const PROGRAM_START = new Date(2026, 8, 7); // 7 sept 2026 (month is 0-indexed)
@@ -79,7 +108,7 @@ interface WeekData { monday: Date; days: Date[]; }
 
 function TrainingDayCard({ date, routineDay, session }: {
   date: Date;
-  routineDay: typeof currentRoutine.days[0];
+  routineDay: DayRoutine;
   session?: SessionLog;
 }) {
   const today = new Date();
@@ -159,6 +188,8 @@ function WeekBlock({ week, sessions, weekNum }: { week: WeekData; sessions: Sess
   const isCurrentWeek = isSameDay(getMonday(today), week.monday);
   const weekStart = formatDateShort(week.days[0]);
   const weekEnd = formatDateShort(week.days[6]);
+  const mondayStr = toLocalDateStr(week.monday);
+  const isForceBlock = mondayStr >= FORCE_BLOCK_START;
   const { meso, week: wk } = getMesoAndWeek(weekNum);
   const isDeload = wk === 5;
 
@@ -168,9 +199,14 @@ function WeekBlock({ week, sessions, weekNum }: { week: WeekData; sessions: Sess
         <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-wider">
           {weekStart} — {weekEnd}
         </h2>
-        {weekNum > 0 && (
+        {weekNum > 0 && !isForceBlock && (
           <span className={`text-[0.65rem] font-bold ${isDeload ? "text-[var(--green)]" : "text-[var(--text-dim)]"}`}>
             M{meso}S{wk}{isDeload ? " · Deload" : ""}
+          </span>
+        )}
+        {isForceBlock && (
+          <span className="text-[0.65rem] font-bold text-[var(--accent)]">
+            Bloc Force
           </span>
         )}
         {isCurrentWeek && (
@@ -180,22 +216,24 @@ function WeekBlock({ week, sessions, weekNum }: { week: WeekData; sessions: Sess
       <div className="space-y-1.5">
         {week.days.map((date) => {
           const dow = date.getDay();
-          const routineDayId = dayOfWeekToRoutine[dow];
-          const routineDay = routineDayId ? currentRoutine.days.find((d) => d.id === routineDayId) : null;
+          const mondayStr = toLocalDateStr(week.monday);
+          const dateStr = toLocalDateStr(date);
+          const dayMap = getDayMap(mondayStr);
+          const restLabels = getRestLabels(mondayStr);
+          const routineDayId = dayMap[dow];
+          const routineDay = routineDayId ? findRoutineDay(routineDayId, mondayStr) : undefined;
 
           if (routineDay) {
-            const dateStr = toLocalDateStr(date);
-            const mondayStr = toLocalDateStr(week.monday);
             const session = sessions.find((s) => {
-              if (s.dayType !== routineDay.id) return false;
               if (s.date) return s.date === dateStr;
+              if (s.dayType !== routineDay.id) return false;
               const sMon = toLocalDateStr(getMonday(new Date(s.startedAt)));
               return sMon === mondayStr;
             });
             return <TrainingDayCard key={dow} date={date} routineDay={routineDay} session={session} />;
           }
 
-          const restLabel = restDayLabels[dow];
+          const restLabel = restLabels[dow];
           if (restLabel) return <RestDayCard key={dow} date={date} label={restLabel} />;
           return null;
         })}
@@ -259,7 +297,7 @@ export default function Home() {
           <div>
             <h1 className="text-xl font-extrabold text-[var(--foreground)]">Entraînement</h1>
             <p className="text-xs text-[var(--text-dim)]">
-              Mésocycle {currentRoutine.mesocycle} · Bloc 1 — Reset fondation
+              Bloc Force — Tractions & Dips lestés
             </p>
           </div>
           <button
@@ -276,6 +314,15 @@ export default function Home() {
         <div className="flex items-center justify-center py-12">
           <p className="text-sm text-[var(--text-dim)]">Chargement...</p>
         </div>
+      )}
+      {loaded && currentMondayStr >= FORCE_BLOCK_START && (
+        <Link
+          href={`/session?day=bonus&date=${toLocalDateStr(new Date())}`}
+          className="block rounded-xl border border-dashed border-[var(--green)]/50 p-3 mb-4 text-center active:scale-[0.98] transition-all"
+        >
+          <span className="text-sm font-semibold text-[var(--green)]">Séance Bonus — Skill & Mobilité</span>
+          <span className="block text-[0.65rem] text-[var(--text-dim)]">FL / HSPU maintien + mobilité (optionnel)</span>
+        </Link>
       )}
       {loaded && weeks.map((week) => {
         const wkStr = weekKey(week.monday);
