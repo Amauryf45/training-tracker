@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { SessionLog } from "@/lib/types";
+import { formatLong, sessionDate } from "@/lib/dates";
 
 const tagColors: Record<string, string> = {
   fl: "text-[var(--green)]",
@@ -9,16 +11,12 @@ const tagColors: Record<string, string> = {
   flag: "text-[var(--orange)]",
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
-}
-
-function formatDuration(start: string, end?: string): string {
-  if (!end) return "";
-  const ms = new Date(end).getTime() - new Date(start).getTime();
-  const min = Math.round(ms / 60000);
-  return `${min} min`;
+/** Span between first and last logged set: startedAt/completedAt are unreliable when a session is saved later */
+function formatDuration(session: SessionLog): string {
+  const times = session.exercises.flatMap((e) => e.sets.map((s) => new Date(s.completedAt).getTime()));
+  if (times.length < 2) return "";
+  const min = Math.round((Math.max(...times) - Math.min(...times)) / 60000);
+  return min >= 5 && min <= 240 ? `${min} min` : "";
 }
 
 function rpeColor(rpe?: number): string {
@@ -34,7 +32,7 @@ export default function HistoryPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/sessions?count=20")
+    fetch("/api/sessions")
       .then((r) => r.json())
       .then((data) => {
         setSessions(Array.isArray(data) ? data : []);
@@ -68,7 +66,7 @@ export default function HistoryPage() {
         <div className="space-y-2">
           {sessions.map((session) => {
             const isExpanded = expanded === session.id;
-            const totalSets = session.exercises.reduce((n, e) => n + e.sets.length, 0);
+            const totalSets = session.exercises.filter((e) => e.tag !== "prehab").reduce((n, e) => n + e.sets.length, 0);
             const skills = [...new Set(session.exercises.map((e) => e.tag).filter((t) => ["fl", "hspu", "flag"].includes(t)))];
 
             return (
@@ -78,7 +76,7 @@ export default function HistoryPage() {
                   className="w-full text-left p-4"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-bold">{formatDate(session.startedAt)}</span>
+                    <span className="text-sm font-bold">{formatLong(sessionDate(session))}</span>
                     <div className="flex items-center gap-2">
                       {session.sessionRpe && (
                         <span className={`text-xs font-bold ${rpeColor(session.sessionRpe)}`}>
@@ -88,17 +86,9 @@ export default function HistoryPage() {
                       <span className="text-xs text-[var(--text-dim)]">{isExpanded ? "▲" : "▼"}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[var(--text-dim)]">{session.dayLabel}</span>
-                    <span className="text-xs text-[var(--text-dim)]">&middot;</span>
-                    <span className="text-xs text-[var(--text-dim)]">{totalSets} séries</span>
-                    {session.completedAt && (
-                      <>
-                        <span className="text-xs text-[var(--text-dim)]">&middot;</span>
-                        <span className="text-xs text-[var(--text-dim)]">{formatDuration(session.startedAt, session.completedAt)}</span>
-                      </>
-                    )}
-                  </div>
+                  <p className="text-xs text-[var(--text-dim)]">
+                    {[session.dayLabel, `${totalSets} séries`, formatDuration(session)].filter(Boolean).join(" · ")}
+                  </p>
                   <div className="flex gap-1.5 mt-1.5">
                     {skills.map((tag) => (
                       <span key={tag} className={`text-xs font-semibold ${tagColors[tag] || ""}`}>
@@ -127,9 +117,12 @@ export default function HistoryPage() {
                     ))}
                     {session.notes && (
                       <div className="pt-2 border-t border-[var(--border)]">
-                        <p className="text-xs text-[var(--text-dim)] italic">{session.notes}</p>
+                        <p className="text-xs text-[var(--text-dim)] italic whitespace-pre-line">{session.notes}</p>
                       </div>
                     )}
+                    <Link href={`/session?id=${encodeURIComponent(session.id)}`} className="block text-xs font-bold text-[var(--accent)] pt-1">
+                      Ouvrir la séance →
+                    </Link>
                   </div>
                 )}
               </div>

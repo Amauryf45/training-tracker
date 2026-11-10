@@ -2,7 +2,8 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState, useCallback, useEffect, useRef } from "react";
-import { currentRoutine } from "@/lib/routine";
+import { getTemplate } from "@/lib/templates";
+import { formatLong, sessionDate, todayStr } from "@/lib/dates";
 import { DayRoutine, ExerciseDef, SetLog, ExerciseLog, SessionLog } from "@/lib/types";
 import { getExerciseInfo, ExerciseInfo } from "@/lib/exercise-info";
 import { useKeepAlive } from "@/app/components/use-keep-alive";
@@ -317,47 +318,20 @@ function ExerciseCard({ exercise, log, onLogUpdate, onStartTimer, readOnly }: {
   );
 }
 
-/* ─── Date helpers ─── */
-function getMonday(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
-function toLocalDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function getMondayStr(dateStr: string): string {
-  return toLocalDateStr(getMonday(new Date(dateStr + "T12:00:00")));
-}
-
-/* ─── LocalStorage draft ─── */
-function getDraftKey(dayId: string, dateStr: string) { return `draft-${dayId}-${getMondayStr(dateStr)}`; }
-
-function buildFallbackDay(dayId: string, session: SessionLog): DayRoutine {
+/* ─── Helpers ─── */
+function buildFallbackDay(session: SessionLog): DayRoutine {
   const sections: DayRoutine["sections"] = [];
-  let currentTag: string | null = null;
-  let currentExercises: ExerciseDef[] = [];
-
   for (const ex of session.exercises) {
-    if (ex.tag !== currentTag) {
-      if (currentExercises.length > 0) {
-        sections.push({ title: sectionTitle(currentTag!), tag: currentTag as ExerciseDef["tag"], exercises: currentExercises });
-      }
-      currentTag = ex.tag;
-      currentExercises = [];
-    }
-    currentExercises.push({ id: ex.exerciseId, name: ex.exerciseName, tag: ex.tag, prescription: "", rest: "", type: ex.tag === "fl" || ex.tag === "flag" ? "hold" : "reps" });
+    const def: ExerciseDef = {
+      id: ex.exerciseId, name: ex.exerciseName, tag: ex.tag, prescription: "", rest: "",
+      type: ex.tag === "fl" || ex.tag === "flag" ? "hold" : "reps",
+    };
+    const last = sections.at(-1);
+    if (last?.tag === ex.tag) last.exercises.push(def);
+    else sections.push({ title: sectionTitle(ex.tag), tag: ex.tag, exercises: [def] });
   }
-  if (currentExercises.length > 0 && currentTag) {
-    sections.push({ title: sectionTitle(currentTag), tag: currentTag as ExerciseDef["tag"], exercises: currentExercises });
-  }
-
-  return { id: dayId, label: session.dayLabel, focus: "", tags: [], sections };
+  return { id: session.dayType, label: session.dayLabel, focus: "", tags: [], sections };
 }
 
 function sectionTitle(tag: string): string {
@@ -365,11 +339,45 @@ function sectionTitle(tag: string): string {
   return map[tag] || tag;
 }
 
+function emptyLogs(day: DayRoutine): Record<string, ExerciseLog> {
+  const logs: Record<string, ExerciseLog> = {};
+  for (const section of day.sections) {
+    for (const ex of section.exercises) {
+      logs[ex.id] = { exerciseId: ex.id, exerciseName: ex.name, tag: ex.tag, sets: [] };
+    }
+  }
+  return logs;
+}
+
+/* ─── LocalStorage draft ─── */
 interface SessionDraft {
+  date: string;
   sessionStarted: string;
   exerciseLogs: Record<string, ExerciseLog>;
   sessionNotes: string;
   sessionRpe: number;
+  savedAt: string;
+}
+
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function readDraft(key: string): SessionDraft | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft: SessionDraft = JSON.parse(raw);
+    if (Date.now() - new Date(draft.savedAt).getTime() > DRAFT_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function removeDraft(key: string) {
+  try { localStorage.removeItem(key); } catch {}
 }
 
 /* ─── Wake Lock (keep screen on during training) ─── */
@@ -387,7 +395,6 @@ function useWakeLock(active: boolean) {
 
     request();
 
-    // Re-acquire on visibility change (returning from background)
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible" && active) request();
     };
@@ -401,28 +408,33 @@ function useWakeLock(active: boolean) {
 }
 
 /* ─── Session Page ─── */
+// ?id=<sessionId> opens a saved session; ?template=<id>&date=<YYYY-MM-DD> starts a new one.
 function SessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const dayId = searchParams.get("day") || "";
-  const dateStr = searchParams.get("date") || new Date().toISOString().split("T")[0];
-  const isViewMode = searchParams.get("view") === "true";
-  const [mode, setMode] = useState<"view" | "edit" | "new">(isViewMode ? "view" : "new");
-  const routineDay = currentRoutine.days.find((d) => d.id === dayId);
-  const [savedDay, setSavedDay] = useState<DayRoutine | null>(null);
-  const day = (mode === "view" && savedDay) ? savedDay : routineDay;
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [loadedRemote, setLoadedRemote] = useState(false);
+  const sessionId = searchParams.get("id");
+  const templateId = searchParams.get("template") || "";
+  const urlDate = searchParams.get("date") || todayStr();
+  const draftKey = sessionId ? `draft:edit:${sessionId}` : `draft:new:${templateId}:${urlDate}`;
+
+  const [loaded, setLoaded] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [existing, setExisting] = useState<SessionLog | null>(null);
+  const [day, setDay] = useState<DayRoutine | null>(null);
+  const [mode, setMode] = useState<"view" | "edit" | "new">(sessionId ? "view" : "new");
+  const [date, setDate] = useState(urlDate);
   const [sessionStarted, setSessionStarted] = useState(() => new Date().toISOString());
+  const [exerciseLogs, setExerciseLogs] = useState<Record<string, ExerciseLog>>({});
   const [sessionNotes, setSessionNotes] = useState("");
   const [sessionRpe, setSessionRpe] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  // Keep screen on + prevent iOS timer suspension during active training
   const isActiveSession = mode !== "view" && !saved;
   useWakeLock(isActiveSession);
   useKeepAlive(isActiveSession);
-  const [existingSessionId, setExistingSessionId] = useState<string | null>(null);
+
   const [timerActive, setTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);
   const [timerExercise, setTimerExercise] = useState("");
@@ -435,104 +447,96 @@ function SessionContent() {
     setTimerKey((k) => k + 1);
   };
 
-  const initEmptyLogs = useCallback((): Record<string, ExerciseLog> => {
-    if (!day) return {};
-    const logs: Record<string, ExerciseLog> = {};
-    for (const section of day.sections) {
-      for (const ex of section.exercises) {
-        logs[ex.id] = { exerciseId: ex.id, exerciseName: ex.name, tag: ex.tag, sets: [] };
-      }
+  const applySession = useCallback((s: SessionLog, snapshot: DayRoutine) => {
+    const logs = emptyLogs(snapshot);
+    for (const ex of s.exercises) logs[ex.exerciseId] = ex;
+    setExerciseLogs(logs);
+    setSessionNotes(s.notes || "");
+    setSessionRpe(s.sessionRpe || 0);
+    setSessionStarted(s.startedAt);
+    setDate(sessionDate(s));
+  }, []);
+
+  const applyDraft = useCallback((draft: SessionDraft) => {
+    setExerciseLogs(draft.exerciseLogs);
+    setSessionNotes(draft.sessionNotes);
+    setSessionRpe(draft.sessionRpe);
+    setSessionStarted(draft.sessionStarted);
+    setDate(draft.date);
+    setDraftRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (sessionId) {
+      fetch(`/api/sessions?id=${encodeURIComponent(sessionId)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((s: SessionLog | null) => {
+          if (!s) { setNotFound(true); return; }
+          const snapshot = s.dayRoutine ?? buildFallbackDay(s);
+          setExisting(s);
+          setDay(snapshot);
+          applySession(s, snapshot);
+        })
+        .catch(() => setNotFound(true))
+        .finally(() => setLoaded(true));
+      return;
     }
-    return logs;
-  }, [day]);
 
-  const [exerciseLogs, setExerciseLogs] = useState<Record<string, ExerciseLog>>(initEmptyLogs);
+    const template = getTemplate(templateId);
+    if (!template) { setNotFound(true); setLoaded(true); return; }
+    setDay(template);
+    setExerciseLogs(emptyLogs(template));
+    const draft = readDraft(draftKey);
+    if (draft) applyDraft(draft);
+    setLoaded(true);
+  }, [sessionId, templateId, draftKey, applySession, applyDraft]);
 
-  // Load existing session from API or draft from localStorage
+  const totalSets = Object.values(exerciseLogs).reduce((n, l) => n + l.sets.filter((s) => s.value > 0).length, 0);
+  const hasContent = totalSets > 0 || sessionNotes !== "" || sessionRpe > 0;
+
   useEffect(() => {
-    if (!dayId || !day) return;
-
-    // Try localStorage draft first (for in-progress sessions)
+    if (!loaded || mode === "view" || saved || !hasContent) return;
     try {
-      const draftRaw = localStorage.getItem(getDraftKey(dayId, dateStr));
-      if (draftRaw && !isViewMode) {
-        const draft: SessionDraft = JSON.parse(draftRaw);
-        const age = Date.now() - new Date(draft.sessionStarted).getTime();
-        if (age < 7 * 24 * 60 * 60 * 1000) {
-          setExerciseLogs(draft.exerciseLogs);
-          setSessionNotes(draft.sessionNotes);
-          setSessionRpe(draft.sessionRpe);
-          setSessionStarted(draft.sessionStarted);
-          setMode("new");
-          setLoadedRemote(true);
-          return;
-        }
-      }
+      const draft: SessionDraft = { date, sessionStarted, exerciseLogs, sessionNotes, sessionRpe, savedAt: new Date().toISOString() };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
     } catch {}
-
-    // Fetch from API to check if session exists for this date
-    fetch(`/api/sessions?count=50`)
-      .then((r) => r.json())
-      .then((data) => {
-        const list: SessionLog[] = Array.isArray(data) ? data : [];
-        const targetMonday = getMondayStr(dateStr);
-        const existing = list.find((s) => {
-          if (s.date) return s.date === dateStr;
-          if (s.dayType !== dayId) return false;
-          const sMon = toLocalDateStr(getMonday(new Date(s.startedAt)));
-          return sMon === targetMonday;
-        });
-        if (existing) {
-          const savedRoutine = existing.dayRoutine || (isViewMode ? buildFallbackDay(dayId, existing) : null);
-          const logs: Record<string, ExerciseLog> = {};
-          if (savedRoutine && isViewMode) {
-            for (const section of savedRoutine.sections) {
-              for (const ex of section.exercises) {
-                logs[ex.id] = { exerciseId: ex.id, exerciseName: ex.name, tag: ex.tag, sets: [] };
-              }
-            }
-          } else {
-            Object.assign(logs, initEmptyLogs());
-          }
-          for (const ex of existing.exercises) {
-            logs[ex.exerciseId] = ex;
-          }
-          setExerciseLogs(logs);
-          setSessionNotes(existing.notes || "");
-          setSessionRpe(existing.sessionRpe || 0);
-          setSessionStarted(existing.startedAt);
-          setExistingSessionId(existing.id);
-          if (savedRoutine) setSavedDay(savedRoutine);
-          setMode(isViewMode ? "view" : "new");
-        }
-        setLoadedRemote(true);
-      })
-      .catch(() => setLoadedRemote(true));
-  }, [dayId, dateStr, isViewMode, day, initEmptyLogs]);
-
-  // Auto-save draft to localStorage (only in edit/new mode)
-  useEffect(() => {
-    if (!dayId || mode === "view" || !loadedRemote) return;
-    try {
-      const draft: SessionDraft = { sessionStarted, exerciseLogs, sessionNotes, sessionRpe };
-      localStorage.setItem(getDraftKey(dayId, dateStr), JSON.stringify(draft));
-    } catch {}
-  }, [dayId, dateStr, sessionStarted, exerciseLogs, sessionNotes, sessionRpe, mode, loadedRemote]);
+  }, [loaded, mode, saved, hasContent, draftKey, date, sessionStarted, exerciseLogs, sessionNotes, sessionRpe]);
 
   const updateExerciseLog = useCallback((exerciseId: string, log: ExerciseLog) => {
     setExerciseLogs((prev) => ({ ...prev, [exerciseId]: log }));
   }, []);
 
+  const startEditing = () => {
+    const draft = readDraft(draftKey);
+    if (draft) applyDraft(draft);
+    setMode("edit");
+  };
+
+  const discardChanges = () => {
+    removeDraft(draftKey);
+    setDraftRestored(false);
+    if (existing && day) {
+      applySession(existing, day);
+      setMode("view");
+    } else if (day) {
+      setExerciseLogs(emptyLogs(day));
+      setSessionNotes("");
+      setSessionRpe(0);
+      setSessionStarted(new Date().toISOString());
+      setDate(urlDate);
+    }
+  };
+
   const saveSession = async () => {
     if (!day) return;
     setSaving(true);
     const session: SessionLog = {
-      id: existingSessionId || `${dayId}-${Date.now()}`,
-      dayType: dayId,
+      id: existing?.id ?? `${templateId}-${Date.now()}`,
+      dayType: existing?.dayType ?? templateId,
       dayLabel: day.label,
-      date: dateStr,
+      date,
       startedAt: sessionStarted,
-      completedAt: new Date().toISOString(),
+      completedAt: existing?.completedAt ?? new Date().toISOString(),
       exercises: Object.values(exerciseLogs).filter((l) => l.sets.length > 0),
       notes: sessionNotes || undefined,
       sessionRpe: sessionRpe || undefined,
@@ -540,22 +544,40 @@ function SessionContent() {
     };
     try {
       const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
-      if (res.ok) {
-        try { localStorage.removeItem(getDraftKey(dayId, dateStr)); } catch {}
-        setSaved(true);
-        setTimeout(() => router.push("/"), 1200);
-      }
-    } catch { alert("Échec de la sauvegarde. Vérifie ta connexion."); }
-    finally { setSaving(false); }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      removeDraft(draftKey);
+      setSaved(true);
+      setTimeout(() => router.push("/"), 1200);
+    } catch {
+      alert("Échec de la sauvegarde. Tes données restent en brouillon sur ce téléphone — réessaie.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteSession = async () => {
+    if (!existing || !confirm("Supprimer cette séance ? C'est définitif.")) return;
+    const res = await fetch(`/api/sessions?id=${encodeURIComponent(existing.id)}`, { method: "DELETE" }).catch(() => null);
+    if (!res?.ok) { alert("Échec de la suppression."); return; }
+    removeDraft(draftKey);
+    router.push("/");
   };
 
   const readOnly = mode === "view";
 
-  if (!day) {
+  if (!loaded) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <p className="text-[var(--text-dim)]">Jour introuvable</p>
-        <button onClick={() => router.push("/")} className="mt-4 text-[var(--accent)] underline ml-2">Retour</button>
+        <p className="text-[var(--text-dim)]">Chargement...</p>
+      </main>
+    );
+  }
+
+  if (notFound || !day) {
+    return (
+      <main className="flex-1 flex flex-col items-center justify-center gap-4">
+        <p className="text-[var(--text-dim)]">Séance introuvable</p>
+        <button onClick={() => router.push("/")} className="text-[var(--accent)] underline">Retour</button>
       </main>
     );
   }
@@ -571,40 +593,47 @@ function SessionContent() {
     );
   }
 
-  if (!loadedRemote) {
-    return (
-      <main className="flex-1 flex items-center justify-center">
-        <p className="text-[var(--text-dim)]">Chargement...</p>
-      </main>
-    );
-  }
+  const routineIds = new Set(day.sections.flatMap((s) => s.exercises.map((e) => e.id)));
+  const orphans = readOnly ? Object.values(exerciseLogs).filter((l) => !routineIds.has(l.exerciseId) && l.sets.length > 0) : [];
 
-  const totalSets = Object.values(exerciseLogs).reduce((n, l) => n + l.sets.filter((s) => s.value > 0).length, 0);
+  let headerStatus: React.ReactNode = <span className="text-xs text-[var(--text-dim)]">{totalSets} séries</span>;
+  if (readOnly) {
+    headerStatus = (
+      <button onClick={startEditing} className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1.5 rounded-lg">
+        Modifier
+      </button>
+    );
+  } else if (existing) {
+    headerStatus = <span className="text-xs text-[var(--text-dim)]">Mode édition</span>;
+  }
 
   return (
     <main className={`flex-1 max-w-lg mx-auto w-full px-4 py-6 ${timerActive ? "pb-36" : "pb-8"}`}>
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={() => router.push("/")} className="text-[var(--accent)] text-sm font-medium">← Retour</button>
-        <div className="flex items-center gap-2">
-          {readOnly ? (
-            <button onClick={() => setMode("edit")} className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1.5 rounded-lg">
-              Modifier
-            </button>
-          ) : existingSessionId ? (
-            <span className="text-xs text-[var(--text-dim)]">Mode édition</span>
-          ) : (
-            <span className="text-xs text-[var(--text-dim)]">{totalSets} séries</span>
-          )}
-        </div>
+        {headerStatus}
       </div>
 
       <h1 className="text-xl font-extrabold text-[var(--foreground)] mb-0.5">{day.label}</h1>
-      <p className="text-sm text-[var(--text-dim)] mb-6">{dateStr} · {day.focus}</p>
+      {readOnly ? (
+        <p className="text-sm text-[var(--text-dim)] mb-6">{formatLong(date)}{day.focus && ` · ${day.focus}`}</p>
+      ) : (
+        <div className="flex items-center gap-2 mb-6">
+          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
+            className="text-sm bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1 text-[var(--foreground)]" />
+          {day.focus && <span className="text-xs text-[var(--text-dim)] truncate">{day.focus}</span>}
+        </div>
+      )}
 
-      {/* Exercise sections */}
-      {day.sections.map((section) => (
-        <div key={section.title} className="mb-6">
+      {draftRestored && !readOnly && (
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-[var(--orange-bg)] px-3 py-2 mb-4">
+          <span className="text-xs text-[var(--orange)] font-medium">Brouillon non sauvegardé restauré</span>
+          <button onClick={discardChanges} className="text-xs font-bold text-[var(--orange)] underline shrink-0">Jeter</button>
+        </div>
+      )}
+
+      {day.sections.map((section, si) => (
+        <div key={`${si}-${section.title}`} className="mb-6">
           <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-widest mb-2">{section.title}</h2>
           {section.exercises.map((ex) => {
             const log = exerciseLogs[ex.id] || { exerciseId: ex.id, exerciseName: ex.name, tag: ex.tag, sets: [] };
@@ -616,41 +645,34 @@ function SessionContent() {
         </div>
       ))}
 
-      {/* Orphaned exercises (saved but no longer in current routine) — view mode only */}
-      {readOnly && (() => {
-        const routineIds = new Set(day.sections.flatMap((s) => s.exercises.map((e) => e.id)));
-        const orphans = Object.values(exerciseLogs).filter((l) => !routineIds.has(l.exerciseId) && l.sets.length > 0);
-        if (orphans.length === 0) return null;
-        return (
-          <div className="mb-6">
-            <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-widest mb-2">Autres exercices (routine précédente)</h2>
-            {orphans.map((log) => (
-              <div key={log.exerciseId} className="bg-white border border-[var(--border)] border-l-[3px] border-l-[var(--text-dim)] rounded-xl p-3 mb-2 shadow-sm">
-                <div className="font-semibold text-sm text-[var(--foreground)]">{log.exerciseName}</div>
-                <div className="mt-2 space-y-1">
-                  {log.sets.map((set, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1">
-                      <span className="text-xs text-[var(--text-dim)] w-6 shrink-0 font-medium">#{i + 1}</span>
-                      <span className="text-sm font-semibold">{set.value}{log.tag === "fl" || log.tag === "flag" ? "s" : " reps"}</span>
-                      {set.weight > 0 && <span className="text-sm text-[var(--text-dim)]">+{set.weight}kg</span>}
-                      {set.rpe > 0 && <span className="text-xs text-[var(--text-dim)]">@RPE {set.rpe}</span>}
-                    </div>
-                  ))}
-                </div>
+      {orphans.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-widest mb-2">Autres exercices</h2>
+          {orphans.map((log) => (
+            <div key={log.exerciseId} className="bg-white border border-[var(--border)] border-l-[3px] border-l-[var(--text-dim)] rounded-xl p-3 mb-2 shadow-sm">
+              <div className="font-semibold text-sm text-[var(--foreground)]">{log.exerciseName}</div>
+              <div className="mt-2 space-y-1">
+                {log.sets.map((set, i) => (
+                  <div key={i} className="flex items-center gap-2 py-1">
+                    <span className="text-xs text-[var(--text-dim)] w-6 shrink-0 font-medium">#{i + 1}</span>
+                    <span className="text-sm font-semibold">{set.value}{log.tag === "fl" || log.tag === "flag" ? "s" : " reps"}</span>
+                    {set.weight > 0 && <span className="text-sm text-[var(--text-dim)]">+{set.weight}kg</span>}
+                    {set.rpe > 0 && <span className="text-xs text-[var(--text-dim)]">@RPE {set.rpe}</span>}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        );
-      })()}
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Session wrap-up */}
       <div className="border border-[var(--border)] rounded-2xl p-4 bg-white shadow-sm mt-6">
         <h3 className="font-bold text-sm mb-3 text-[var(--foreground)]">Bilan de la séance</h3>
 
         {readOnly ? (
           <>
             {sessionRpe > 0 && <p className="text-sm">RPE global : <strong>{sessionRpe}</strong></p>}
-            {sessionNotes && <p className="text-sm text-[var(--text-dim)] italic mt-2">{sessionNotes}</p>}
+            {sessionNotes && <p className="text-sm text-[var(--text-dim)] italic mt-2 whitespace-pre-line">{sessionNotes}</p>}
             {!sessionRpe && !sessionNotes && <p className="text-sm text-[var(--text-dim)]">Aucun bilan enregistré</p>}
           </>
         ) : (
@@ -659,7 +681,7 @@ function SessionContent() {
               <label className="text-xs text-[var(--text-dim)] block mb-1.5 font-medium">RPE global</label>
               <div className="flex gap-1.5">
                 {[5, 6, 7, 8, 9, 10].map((v) => (
-                  <button key={v} onClick={() => setSessionRpe(v)}
+                  <button key={v} onClick={() => setSessionRpe(sessionRpe === v ? 0 : v)}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
                       sessionRpe === v ? "bg-[var(--accent)] text-white shadow-sm" : "bg-[var(--surface2)] text-[var(--text-dim)] border border-[var(--border)]"
                     }`}>{v}</button>
@@ -679,6 +701,16 @@ function SessionContent() {
               }`}>
               {saving ? "Sauvegarde..." : `Sauvegarder (${totalSets} séries)`}
             </button>
+            {existing && (
+              <div className="flex gap-2 mt-3">
+                <button onClick={discardChanges} className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-[var(--text-dim)] bg-[var(--surface2)] border border-[var(--border)]">
+                  Annuler les modifications
+                </button>
+                <button onClick={deleteSession} className="py-2.5 px-4 rounded-xl text-xs font-semibold text-[var(--red)] bg-red-50 active:bg-red-100">
+                  Supprimer
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

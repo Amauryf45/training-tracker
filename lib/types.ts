@@ -32,7 +32,7 @@ export interface ExerciseLog {
 
 export interface SessionLog {
   id: string;
-  /** e.g. "day1", "day2", "day4", "day5" */
+  /** Template the session was started from, e.g. "force" (Block 1: "day1"…"day5") */
   dayType: string;
   dayLabel: string;
   /** Calendar date this session belongs to (YYYY-MM-DD) */
@@ -58,12 +58,4 @@ export interface DayRoutine {
     tag: SkillTag;
     exercises: ExerciseDef[];
   }[];
-}
-
-export interface Routine {
-  version: number;
-  updatedAt: string;
-  mesocycle: number;
-  week: number;
-  days: DayRoutine[];
 }

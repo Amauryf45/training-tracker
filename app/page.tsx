@@ -1,83 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
-import { currentRoutine } from "@/lib/routine";
-import { SessionLog, DayRoutine } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SessionLog, SkillTag } from "@/lib/types";
+import { templates } from "@/lib/templates";
+import { blockFor, blockWeek, plannedFor, PlannedSession, PROGRAM_END, PROGRAM_START } from "@/lib/program";
+import { addDays, formatDayLabel, formatLong, formatShort, mondayOf, sessionDate, todayStr } from "@/lib/dates";
 
-const tagColors: Record<string, string> = {
-  fl: "bg-[var(--green-bg)] text-[var(--green)]",
-  hspu: "bg-[var(--blue-bg)] text-[var(--blue)]",
-  flag: "bg-[var(--orange-bg)] text-[var(--orange)]",
+const tagStyle: Partial<Record<SkillTag, { label: string; cls: string }>> = {
+  fl: { label: "FL", cls: "bg-[var(--green-bg)] text-[var(--green)]" },
+  hspu: { label: "HSPU", cls: "bg-[var(--blue-bg)] text-[var(--blue)]" },
+  flag: { label: "FLAG", cls: "bg-[var(--orange-bg)] text-[var(--orange)]" },
+  acc: { label: "FORCE", cls: "bg-[var(--accent)]/10 text-[var(--accent)]" },
 };
-
-// Block 1 calendar stubs (for rendering past weeks — sessions have their own snapshots)
-const block1Stubs: DayRoutine[] = [
-  { id: "day1", label: "Jour 1 — Tirage + Flag (Volume)", focus: "Front lever volume + Human flag", tags: ["fl", "flag"], sections: [] },
-  { id: "day2", label: "Jour 2 — Poussée + Équilibre (Volume)", focus: "HSPU volume + équilibre", tags: ["hspu"], sections: [] },
-  { id: "day4", label: "Jour 4 — Tirage + Flag (Intensité)", focus: "Front lever intensité + Human flag", tags: ["fl", "flag"], sections: [] },
-  { id: "day5", label: "Jour 5 — Poussée (Intensité)", focus: "HSPU intensité + force", tags: ["hspu"], sections: [] },
-];
-
-function findRoutineDay(id: string, mondayStr: string): DayRoutine | undefined {
-  const found = currentRoutine.days.find((d) => d.id === id);
-  if (found) return found;
-  if (mondayStr < FORCE_BLOCK_START) return block1Stubs.find((d) => d.id === id);
-  return undefined;
-}
-
-// Block 1 (S1–S5): fixed 4-day split
-const block1DayMap: Record<number, string> = { 1: "day1", 2: "day2", 4: "day4", 5: "day5" };
-const block1RestLabels: Record<number, string> = { 0: "Course", 3: "Course", 6: "Repos" };
-// Force block (22 oct → 12 nov): any weekday
-const forceDayMap: Record<number, string> = { 1: "force", 2: "force", 3: "force", 4: "force", 5: "force" };
-const forceRestLabels: Record<number, string> = { 0: "Course", 6: "Repos" };
-// Cutover: force block starts week of 20 oct (monday)
-const FORCE_BLOCK_START = "2026-10-20";
-
-function getDayMap(mondayStr: string): Record<number, string> {
-  return mondayStr >= FORCE_BLOCK_START ? forceDayMap : block1DayMap;
-}
-function getRestLabels(mondayStr: string): Record<number, string> {
-  return mondayStr >= FORCE_BLOCK_START ? forceRestLabels : block1RestLabels;
-}
-
-const frenchDayNames = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-const frenchMonths = ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
-
-// Program start date — no weeks shown before this
-const PROGRAM_START = new Date(2026, 8, 7); // 7 sept 2026 (month is 0-indexed)
-
-/** Local date string YYYY-MM-DD (no UTC shift) */
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function getMonday(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function formatDateShort(d: Date): string {
-  return `${d.getDate()} ${frenchMonths[d.getMonth()]}`;
-}
-
-function getWeekDays(monday: Date): Date[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return d;
-  });
-}
-
-function weekKey(monday: Date): string { return toLocalDateStr(monday); }
 
 function rpeColor(rpe?: number): string {
   if (!rpe) return "text-[var(--text-dim)]";
@@ -86,157 +22,138 @@ function rpeColor(rpe?: number): string {
   return "text-[var(--red)]";
 }
 
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+function shortLabel(label: string): string {
+  return label.startsWith("Jour ") && label.includes(" — ") ? label.split(" — ")[1] : label;
 }
 
-/** Get week number since program start */
-function getWeekNumber(monday: Date): number {
-  const startMonday = getMonday(PROGRAM_START);
-  const diff = monday.getTime() - startMonday.getTime();
-  return Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1;
+function sessionTags(s: SessionLog): SkillTag[] {
+  if (s.dayRoutine) return s.dayRoutine.tags;
+  const skills = [...new Set(s.exercises.map((e) => e.tag))].filter((t) => t === "fl" || t === "hspu" || t === "flag");
+  return skills.length > 0 ? skills : ["acc"];
 }
 
-function getMesoAndWeek(weekNum: number): { meso: number; week: number } {
-  if (weekNum < 1) return { meso: 0, week: 0 };
-  const meso = Math.ceil(weekNum / 5);
-  const week = ((weekNum - 1) % 5) + 1;
-  return { meso, week };
-}
-
-interface WeekData { monday: Date; days: Date[]; }
-
-function TrainingDayCard({ date, routineDay, session }: {
-  date: Date;
-  routineDay: DayRoutine;
-  session?: SessionLog;
-}) {
-  const today = new Date();
-  const isToday = isSameDay(date, today);
-  const isPast = date < today && !isToday;
-  const hasSession = !!session;
-  const dateStr = toLocalDateStr(date);
-
+function Tags({ tags, extra }: { tags: SkillTag[]; extra?: React.ReactNode }) {
   return (
-    <Link
-      href={hasSession ? `/session?day=${routineDay.id}&date=${dateStr}&view=true` : `/session?day=${routineDay.id}&date=${dateStr}`}
-      className={`block rounded-xl border p-3 transition-all active:scale-[0.98] ${
-        isToday
-          ? "border-[var(--accent)] bg-gradient-to-br from-[#fff9f5] to-white shadow-sm"
-          : hasSession
-          ? "border-[var(--green)]/50 bg-[var(--green-bg)]/20"
-          : isPast
-          ? "border-[var(--border)] bg-[var(--surface2)]/50 opacity-50"
-          : "border-[var(--border)] bg-white shadow-sm"
-      }`}
-    >
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-[var(--text-dim)]">{frenchDayNames[date.getDay()]} {date.getDate()}</span>
-          <span className="font-semibold text-sm">{routineDay.label.split(" — ")[1]}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {isToday && (
-            <span className="text-[0.65rem] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded-full">
-              AUJOURD&apos;HUI
-            </span>
-          )}
-          {hasSession && (
-            <span className="text-[0.65rem] font-bold text-[var(--green)] bg-[var(--green-bg)] px-1.5 py-0.5 rounded-full">
-              ✓
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {routineDay.tags.map((tag) => (
-          <span key={tag} className={`text-[0.65rem] font-semibold px-1.5 py-0.5 rounded-md ${tagColors[tag] || ""}`}>
-            {tag.toUpperCase()}
-          </span>
-        ))}
-        {session?.sessionRpe && (
-          <span className={`text-[0.65rem] font-bold ml-auto ${rpeColor(session.sessionRpe)}`}>
-            RPE {session.sessionRpe}
-          </span>
-        )}
-      </div>
-    </Link>
-  );
-}
-
-function RestDayCard({ date, label }: { date: Date; label: string }) {
-  const isToday = isSameDay(date, new Date());
-  return (
-    <div className={`rounded-xl border p-2.5 ${
-      isToday ? "border-[var(--accent)]/30 bg-[var(--surface)]" : "border-[var(--border)] bg-[var(--surface2)]/30"
-    }`}>
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-[var(--text-dim)]">{frenchDayNames[date.getDay()]} {date.getDate()}</span>
-        <span className="text-sm text-[var(--text-dim)]">{label}</span>
-        {isToday && (
-          <span className="text-[0.65rem] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded-full ml-auto">
-            AUJOURD&apos;HUI
-          </span>
-        )}
-      </div>
+    <div className="flex items-center gap-1.5 mt-1">
+      {tags.map((t) => tagStyle[t] && (
+        <span key={t} className={`text-[0.65rem] font-semibold px-1.5 py-0.5 rounded-md ${tagStyle[t]!.cls}`}>{tagStyle[t]!.label}</span>
+      ))}
+      {extra}
     </div>
   );
 }
 
-function WeekBlock({ week, sessions, weekNum }: { week: WeekData; sessions: SessionLog[]; weekNum: number }) {
-  const today = new Date();
-  const isCurrentWeek = isSameDay(getMonday(today), week.monday);
-  const weekStart = formatDateShort(week.days[0]);
-  const weekEnd = formatDateShort(week.days[6]);
-  const mondayStr = toLocalDateStr(week.monday);
-  const isForceBlock = mondayStr >= FORCE_BLOCK_START;
-  const { meso, week: wk } = getMesoAndWeek(weekNum);
-  const isDeload = wk === 5;
+function DoneCard({ session }: { session: SessionLog }) {
+  return (
+    <Link href={`/session?id=${encodeURIComponent(session.id)}`}
+      className="block rounded-xl border border-[var(--green)]/50 bg-[var(--green-bg)]/20 p-2.5 active:scale-[0.98] transition-all">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-sm">{shortLabel(session.dayLabel)}</span>
+        <span className="text-[0.65rem] font-bold text-[var(--green)] bg-[var(--green-bg)] px-1.5 py-0.5 rounded-full">✓</span>
+      </div>
+      <Tags tags={sessionTags(session)} extra={session.sessionRpe ? (
+        <span className={`text-[0.65rem] font-bold ml-auto ${rpeColor(session.sessionRpe)}`}>RPE {session.sessionRpe}</span>
+      ) : null} />
+    </Link>
+  );
+}
+
+function PlannedCard({ planned, date, isToday, isPast }: { planned: PlannedSession; date: string; isToday: boolean; isPast: boolean }) {
+  const startable = !!planned.template && templates.some((t) => t.id === planned.template);
+  let tone = "border-dashed border-[var(--border)] bg-white";
+  if (isToday) tone = "border-[var(--accent)] bg-gradient-to-br from-[#fff9f5] to-white shadow-sm";
+  else if (isPast) tone = "border-[var(--border)] bg-[var(--surface2)]/50 opacity-50";
+  const cls = `block rounded-xl border p-2.5 ${tone}`;
+  const body = (
+    <>
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-sm">{planned.label}</span>
+        {isToday && <span className="text-[0.65rem] font-bold text-[var(--accent)]">PRÉVU AUJOURD&apos;HUI</span>}
+        {isPast && <span className="text-[0.65rem] text-[var(--text-dim)]">non faite</span>}
+      </div>
+      <Tags tags={planned.tags} />
+    </>
+  );
+  if (!startable) return <div className={cls}>{body}</div>;
+  return (
+    <Link href={`/session?template=${planned.template}&date=${date}`} className={`${cls} active:scale-[0.98] transition-all`}>
+      {body}
+    </Link>
+  );
+}
+
+function DayRow({ date, sessions, onAdd }: { date: string; sessions: SessionLog[]; onAdd: (date: string) => void }) {
+  const today = todayStr();
+  const isToday = date === today;
+  const planned = sessions.length === 0 ? plannedFor(date) : undefined;
+  const empty = sessions.length === 0 && !planned;
+
+  return (
+    <div className="flex items-start gap-2">
+      <div className={`w-12 shrink-0 pt-2.5 text-xs font-bold ${isToday ? "text-[var(--accent)]" : "text-[var(--text-dim)]"}`}>
+        {formatDayLabel(date)}
+      </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        {sessions.map((s) => <DoneCard key={s.id} session={s} />)}
+        {planned && <PlannedCard planned={planned} date={date} isToday={isToday} isPast={date < today} />}
+        {empty && (
+          <div className={`h-9 rounded-xl ${isToday ? "border border-[var(--accent)]/30 bg-[var(--surface)]" : ""}`} />
+        )}
+      </div>
+      <button onClick={() => onAdd(date)} aria-label={`Ajouter une séance le ${date}`}
+        className="w-8 h-9 shrink-0 rounded-lg text-[var(--text-dim)] active:bg-[var(--surface2)] text-lg leading-none">
+        +
+      </button>
+    </div>
+  );
+}
+
+function WeekBlock({ monday, sessionsByDate, onAdd }: {
+  monday: string;
+  sessionsByDate: Map<string, SessionLog[]>;
+  onAdd: (date: string) => void;
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const isCurrentWeek = monday === mondayOf(todayStr());
+  const weekBlocks = [...new Set(days.map((d) => blockFor(d)).filter((b) => b !== undefined))];
 
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-2 px-1">
         <h2 className="text-xs font-bold text-[var(--text-dim)] uppercase tracking-wider">
-          {weekStart} — {weekEnd}
+          {formatShort(days[0])} — {formatShort(days[6])}
         </h2>
-        {weekNum > 0 && !isForceBlock && (
-          <span className={`text-[0.65rem] font-bold ${isDeload ? "text-[var(--green)]" : "text-[var(--text-dim)]"}`}>
-            M{meso}S{wk}{isDeload ? " · Deload" : ""}
+        {weekBlocks.map((b) => (
+          <span key={b.name} className="text-[0.65rem] font-bold text-[var(--text-dim)]">
+            {b.short}{b.end > addDays(b.start, 6) ? ` S${blockWeek(b, monday)}` : ""}
           </span>
-        )}
-        {isForceBlock && (
-          <span className="text-[0.65rem] font-bold text-[var(--accent)]">
-            Bloc Force
-          </span>
-        )}
-        {isCurrentWeek && (
-          <span className="text-[0.65rem] font-bold text-[var(--accent)] ml-auto">← Cette semaine</span>
-        )}
+        ))}
+        {isCurrentWeek && <span className="text-[0.65rem] font-bold text-[var(--accent)] ml-auto">← Cette semaine</span>}
       </div>
       <div className="space-y-1.5">
-        {week.days.map((date) => {
-          const dow = date.getDay();
-          const mondayStr = toLocalDateStr(week.monday);
-          const dateStr = toLocalDateStr(date);
-          const dayMap = getDayMap(mondayStr);
-          const restLabels = getRestLabels(mondayStr);
-          const routineDayId = dayMap[dow];
-          const routineDay = routineDayId ? findRoutineDay(routineDayId, mondayStr) : undefined;
+        {days.map((d) => <DayRow key={d} date={d} sessions={sessionsByDate.get(d) ?? []} onAdd={onAdd} />)}
+      </div>
+    </div>
+  );
+}
 
-          if (routineDay) {
-            const session = sessions.find((s) => {
-              if (s.date) return s.date === dateStr;
-              if (s.dayType !== routineDay.id) return false;
-              const sMon = toLocalDateStr(getMonday(new Date(s.startedAt)));
-              return sMon === mondayStr;
-            });
-            return <TrainingDayCard key={dow} date={date} routineDay={routineDay} session={session} />;
-          }
-
-          const restLabel = restLabels[dow];
-          if (restLabel) return <RestDayCard key={dow} date={date} label={restLabel} />;
-          return null;
-        })}
+function TemplatePicker({ date, onClose }: { date: string; onClose: () => void }) {
+  const router = useRouter();
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full p-5 pb-8 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-bold text-base mb-1">Nouvelle séance</h3>
+        <p className="text-xs text-[var(--text-dim)] mb-4">{formatLong(date)}</p>
+        <div className="space-y-2">
+          {templates.map((t) => (
+            <button key={t.id} onClick={() => router.push(`/session?template=${t.id}&date=${date}`)}
+              className="w-full text-left rounded-xl border border-[var(--border)] p-3 active:scale-[0.98] transition-all">
+              <div className="font-semibold text-sm">{t.label}</div>
+              <div className="text-xs text-[var(--text-dim)]">{t.focus}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -244,97 +161,75 @@ function WeekBlock({ week, sessions, weekNum }: { week: WeekData; sessions: Sess
 
 export default function Home() {
   const [sessions, setSessions] = useState<SessionLog[]>([]);
-  const [weeks, setWeeks] = useState<WeekData[]>([]);
-  const currentWeekRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [pickerDate, setPickerDate] = useState<string | null>(null);
+  const currentWeekRef = useRef<HTMLDivElement>(null);
+
+  const today = todayStr();
+  const currentMonday = mondayOf(today);
 
   useEffect(() => {
-    const today = new Date();
-    const currentMonday = getMonday(today);
-    const programMonday = getMonday(PROGRAM_START);
-    const allWeeks: WeekData[] = [];
-
-    // Start from program start, go up to 4 weeks in the future
-    const startMonday = programMonday;
-    const endMonday = new Date(currentMonday);
-    endMonday.setDate(currentMonday.getDate() + 4 * 7);
-
-    const cursor = new Date(startMonday);
-    while (cursor <= endMonday) {
-      allWeeks.push({ monday: new Date(cursor), days: getWeekDays(new Date(cursor)) });
-      cursor.setDate(cursor.getDate() + 7);
-    }
-    setWeeks(allWeeks);
-
-    fetch("/api/sessions?count=50")
+    fetch("/api/sessions")
       .then((r) => r.json())
-      .then((data) => {
-        setSessions(Array.isArray(data) ? data : []);
-        setLoaded(true);
-      })
-      .catch(() => setLoaded(true));
+      .then((data) => setSessions(Array.isArray(data) ? data : []))
+      .catch(() => setError(true))
+      .finally(() => setLoaded(true));
   }, []);
 
   useEffect(() => {
-    if (loaded && currentWeekRef.current) {
-      currentWeekRef.current.scrollIntoView({ behavior: "instant", block: "start" });
-    }
+    if (loaded) currentWeekRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
   }, [loaded]);
 
-  const today = new Date();
-  const currentMondayStr = weekKey(getMonday(today));
-  const programMonday = getMonday(PROGRAM_START);
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, SessionLog[]>();
+    for (const s of [...sessions].sort((a, b) => a.startedAt.localeCompare(b.startedAt))) {
+      const d = sessionDate(s);
+      map.set(d, [...(map.get(d) ?? []), s]);
+    }
+    return map;
+  }, [sessions]);
 
-  const scrollToToday = () => {
-    currentWeekRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  const lastPlanned = mondayOf(PROGRAM_END);
+  const ahead = addDays(currentMonday, 14);
+  const lastMonday = lastPlanned > ahead ? lastPlanned : ahead;
+  const mondays: string[] = [];
+  for (let m = mondayOf(PROGRAM_START); m <= lastMonday; m = addDays(m, 7)) mondays.push(m);
+
+  // Date-dependent text waits for the client: the page is prerendered at build time
+  const currentBlock = loaded ? blockFor(today) : undefined;
 
   return (
     <main className="flex-1 max-w-lg mx-auto w-full px-4">
-      {/* Sticky header */}
       <div className="sticky top-0 z-20 bg-[var(--background)] pt-4 pb-3 border-b border-[var(--border)] mb-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="min-w-0 mr-2">
             <h1 className="text-xl font-extrabold text-[var(--foreground)]">Entraînement</h1>
-            <p className="text-xs text-[var(--text-dim)]">
-              Bloc Force — Tractions & Dips lestés
-            </p>
+            <p className="text-xs text-[var(--text-dim)] min-h-4 truncate">{loaded && (currentBlock?.name ?? "Hors bloc")}</p>
           </div>
-          <button
-            onClick={scrollToToday}
-            className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1.5 rounded-lg active:bg-[var(--accent)]/20"
-          >
-            Aujourd&apos;hui
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setPickerDate(today)}
+              className="text-xs font-bold text-white bg-[var(--accent)] px-3 py-1.5 rounded-lg whitespace-nowrap active:opacity-90">
+              + Séance
+            </button>
+            <button onClick={() => currentWeekRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1.5 rounded-lg active:bg-[var(--accent)]/20">
+              Aujourd&apos;hui
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Weeks — only render after sessions are loaded to avoid layout shift */}
-      {!loaded && (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-sm text-[var(--text-dim)]">Chargement...</p>
-        </div>
-      )}
-      {loaded && currentMondayStr >= FORCE_BLOCK_START && (
-        <Link
-          href={`/session?day=bonus&date=${toLocalDateStr(new Date())}`}
-          className="block rounded-xl border border-dashed border-[var(--green)]/50 p-3 mb-4 text-center active:scale-[0.98] transition-all"
-        >
-          <span className="text-sm font-semibold text-[var(--green)]">Séance Bonus — Skill & Mobilité</span>
-          <span className="block text-[0.65rem] text-[var(--text-dim)]">FL / HSPU maintien + mobilité (optionnel)</span>
-        </Link>
-      )}
-      {loaded && weeks.map((week) => {
-        const wkStr = weekKey(week.monday);
-        const isCurrentWeek = wkStr === currentMondayStr;
-        const weekNum = getWeekNumber(week.monday);
+      {!loaded && <p className="text-sm text-[var(--text-dim)] text-center py-12">Chargement...</p>}
+      {error && <p className="text-sm text-[var(--red)] text-center mb-4">Impossible de charger les séances. Vérifie ta connexion.</p>}
 
-        return (
-          <div key={wkStr} ref={isCurrentWeek ? currentWeekRef : undefined}>
-            <WeekBlock week={week} sessions={sessions} weekNum={weekNum} />
-          </div>
-        );
-      })}
+      {loaded && mondays.map((m) => (
+        <div key={m} ref={m === currentMonday ? currentWeekRef : undefined} className="scroll-mt-24">
+          <WeekBlock monday={m} sessionsByDate={sessionsByDate} onAdd={setPickerDate} />
+        </div>
+      ))}
+
+      {pickerDate && <TemplatePicker date={pickerDate} onClose={() => setPickerDate(null)} />}
     </main>
   );
 }
