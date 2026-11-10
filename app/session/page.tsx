@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { getTemplate } from "@/lib/templates";
 import { formatLong, sessionDate, todayStr } from "@/lib/dates";
+import { writeFetch } from "@/lib/write-client";
 import { DayRoutine, ExerciseDef, SetLog, ExerciseLog, SessionLog } from "@/lib/types";
 import { getExerciseInfo, ExerciseInfo } from "@/lib/exercise-info";
 import { useKeepAlive } from "@/app/components/use-keep-alive";
@@ -543,7 +544,7 @@ function SessionContent() {
       dayRoutine: day,
     };
     try {
-      const res = await fetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
+      const res = await writeFetch("/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       removeDraft(draftKey);
       setSaved(true);
@@ -556,8 +557,8 @@ function SessionContent() {
   };
 
   const deleteSession = async () => {
-    if (!existing || !confirm("Supprimer cette séance ? C'est définitif.")) return;
-    const res = await fetch(`/api/sessions?id=${encodeURIComponent(existing.id)}`, { method: "DELETE" }).catch(() => null);
+    if (!existing || !confirm("Supprimer cette séance ?")) return;
+    const res = await writeFetch(`/api/sessions?id=${encodeURIComponent(existing.id)}`, { method: "DELETE" }).catch(() => null);
     if (!res?.ok) { alert("Échec de la suppression."); return; }
     removeDraft(draftKey);
     router.push("/");

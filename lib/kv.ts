@@ -17,13 +17,16 @@ export async function getSession(id: string): Promise<SessionLog | null> {
   return kv.get<SessionLog>(`${SESSION_PREFIX}${id}`);
 }
 
-export async function deleteSession(id: string): Promise<void> {
-  await kv.del(`${SESSION_PREFIX}${id}`);
-  await kv.lrem(SESSION_LIST_KEY, 0, id);
+/** Soft delete: the record stays in storage with `deletedAt` set */
+export async function deleteSession(id: string): Promise<boolean> {
+  const session = await getSession(id);
+  if (!session) return false;
+  await kv.set(`${SESSION_PREFIX}${id}`, { ...session, deletedAt: new Date().toISOString() });
+  return true;
 }
 
-/** Newest first, by session date then start time */
-export async function getSessions(count?: number): Promise<SessionLog[]> {
+/** Newest first, by session date then start time. Soft-deleted sessions are left out unless asked. */
+export async function getSessions(count?: number, includeDeleted = false): Promise<SessionLog[]> {
   const ids = await kv.lrange<string>(SESSION_LIST_KEY, 0, -1);
   if (!ids || ids.length === 0) return [];
 
@@ -31,7 +34,7 @@ export async function getSessions(count?: number): Promise<SessionLog[]> {
     [...new Set(ids)].map((id) => kv.get<SessionLog>(`${SESSION_PREFIX}${id}`))
   );
   const sorted = sessions
-    .filter((s): s is SessionLog => s !== null)
+    .filter((s): s is SessionLog => s !== null && (includeDeleted || !s.deletedAt))
     .sort((a, b) => {
       const da = a.date ?? a.startedAt.slice(0, 10);
       const db = b.date ?? b.startedAt.slice(0, 10);

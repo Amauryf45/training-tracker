@@ -46,6 +46,8 @@ export interface SessionLog {
   sessionRpe?: number;
   /** Snapshot of the day routine at save time (for stable past-session display) */
   dayRoutine?: DayRoutine;
+  /** Soft delete: hidden from the app but kept in storage, saving again restores it */
+  deletedAt?: string;
 }
 
 export interface DayRoutine {
